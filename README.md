@@ -42,6 +42,7 @@ Maintained by Maarten Westenberg (mw12554@hotmail.com)
 - NTP Support for time sync with internet time servers
 - Webserver support (default port 8080)
 - WiFiManager support
+- Limited SPIFF (filesystem) support for persistent data storage
 - .h header file for configuration
 
 Not (yet) supported:
@@ -75,11 +76,24 @@ and connection instructions
 
 ##Configuration
 
+###Using WiFiManager
+
+The easiest way to configure the Gateway on WiFi is by using the WiFimanager function. This function works out of the box. WiFiManager will put the gateway in accesspoint mode so that you can connect to it as a WiFi accesspoint. 
+
+The standard access point name used by the gateway is "ESP8266 Gway" and its password is "ttnAutoPw". After binding to the access point with your mobile phone or computer, go to htp://192.168.4.1 in a browser and tell the gateway to which WiFi network you want it to connect, and specify the password.
+
+The gateway will then reset and bind to the given network. If all goes well you are now set and the ESP8266 will remember the network that it must connect to.
+
+Note: All settings and the more advanced features can be set by editing the configuration file (see the next section). 
+
+### Editing ESP-sc-gway.h
+
 All user configurable settings are put in the ESP-sc-gway.h file as much as possible.
 The most important things to configure to your own environment are:
 
 - static char *wpa[WPASIZE][2] contains the array of known WiFi access points the Gateway will connect to.
 Make sure that the dimensions of the array are correctly defined in the WPASIZE settings. 
+Note: When the WiFiManager software is enabled (it is by default) there must at least be one entry in the wpa file, wpa[0] is used for storing WiFiManager information.
 - Only the sx1276 (and HopeRF 95) radio modules are supported at this time. The sx1272 code should be 
 working without much work, but as I do not have one of these modules available I cannot test this.
 - This software allows to connect to 2 servers at the same time (as most gateways do BTW). 
