@@ -121,6 +121,5 @@ The Gateay timestamps are according to the LoRa specification:
 
 ##License
 
-The source files in this repository are made available under the Eclipse
-Public License v1.0, except for the base64 implementation, that has been
-copied from the Semtech Packet Forwader.
+The source files of the gateway sketch in this repository is made available under the Eclipse
+Public License v1.0. The libraries included in this repository are included for convenience only and all have their own license.
