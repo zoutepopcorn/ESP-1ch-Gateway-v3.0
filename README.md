@@ -25,7 +25,7 @@ mcu and provide RTC, Webserver and DNS services.
 Version 2.0 adds several enhancements and part have been completely redesigned.
 Changes include two-way traffic. The code is also slit over multiple source files
 which makes editing easier.
-Version 3.0 includes WiFi Master support which makes it easy to use the 1-ch gateway for demo purposes where you need to quickly connect the gateway to a WiFi accesspoint (or your mobiel phone)..
+Version 3.0 includes WiFi Master support which makes it easy to use the 1-ch gateway for demo purposes where you need to quickly connect the gateway to a WiFi accesspoint (or your mobiel phone).It also contains limited SPIFF filesystem support which enables the ESP to store its data in a more persistent way.
 
 Maintained by Maarten Westenberg (mw12554@hotmail.com)
 
@@ -76,13 +76,15 @@ and connection instructions
 
 ##Configuration
 
-###Using WiFiManager
+###Connect to WiFI with WiFiManager
 
 The easiest way to configure the Gateway on WiFi is by using the WiFimanager function. This function works out of the box. WiFiManager will put the gateway in accesspoint mode so that you can connect to it as a WiFi accesspoint. 
 
 The standard access point name used by the gateway is "ESP8266 Gway" and its password is "ttnAutoPw". After binding to the access point with your mobile phone or computer, go to htp://192.168.4.1 in a browser and tell the gateway to which WiFi network you want it to connect, and specify the password.
 
 The gateway will then reset and bind to the given network. If all goes well you are now set and the ESP8266 will remember the network that it must connect to.
+
+
 
 Note: All settings and the more advanced features can be set by editing the configuration file (see the next section). 
 
@@ -123,6 +125,10 @@ Make sure that you set:
   40.114.249.243, port 1700 
   
 Edit .h file (ESP-sc-gway.h) to change configuration (look for: "Configure these values!").
+
+###Webserver
+
+The built-in webserver can be used to display status and debugging information. It can be accessed with the following URL: http://<gatewayIP>:8080 The webserver shows various configuration settings as well as providing functions to set debug mode and reset statistics and the WiFiManager accesspoint.
 
 ##Notes
 
