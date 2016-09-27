@@ -128,7 +128,7 @@ Edit .h file (ESP-sc-gway.h) to change configuration (look for: "Configure these
 
 ###Webserver
 
-The built-in webserver can be used to display status and debugging information. It can be accessed with the following URL: http://<gatewayIP>:8080 The webserver shows various configuration settings as well as providing functions to set debug mode and reset statistics and the WiFiManager accesspoint.
+The built-in webserver can be used to display status and debugging information. It can be accessed with the following URL: http://YourGatewayIP:8080 The webserver shows various configuration settings as well as providing functions to set debug mode and reset statistics and the WiFiManager accesspoint.
 
 ##Notes
 
