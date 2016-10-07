@@ -1,38 +1,26 @@
-/*******************************************************************************
- * Copyright (c) 2016 Maarten Westenberg version for ESP8266
- * Verison 3.0.0
- * Date: 2016-09-27
- *
- * 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
- *	and many others.
- *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
- *
- * The protocols used in this 1ch gateway: 
- * 1. LoRA Specification version V1.0 and V1.1 for Gateway-Node communication
- *	
- * 2. Semtech Basic communication protocol between Lora gateway and server version 3.0.0
- *	https://github.com/Lora-net/packet_forwarder/blob/master/PROTOCOL.TXT
- *
- * Notes: 
- * - Once call gethostbyname() to get IP for services, after that only use IP
- *	 addresses (too many gethost name makes ESP unstable)
- * - Only call yield() in main stream (not for background NTP sync). 
- *
- *******************************************************************************/
-
+//
+// Copyright (c) 2016 Maarten Westenberg version for ESP8266
+// Verison 3.1.0
+// Date: 2016-10-07
+//
+// 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
+//	and many others.
+//
+// All rights reserved. This program and the accompanying materials
+// are made available under the terms of the MIT License
+// which accompanies this distribution, and is available at
+// https://opensource.org/licenses/mit-license.php
+//
+// Author: Maarten Westenberg
+// Version: 3.1.0
+// Date: 2016-10-07
+//
+// This file contains the webserver code for the ESP Single Channel Gateway.
 
 // ================================================================================
-// WEBSERVER FUNCTIONS (PORT 8080)
+// WEBSERVER FUNCTIONS 
 
 #if A_SERVER==1
-
-
-
-
 
 
 // ----------------------------------------------------------------------------
@@ -101,7 +89,7 @@ String WifiServer(char *cmd, char *arg) {
 		debug=atoi(arg); response+=" debug="; response+=arg;
 	}
 	if (strcmp(cmd, "DELAY")==0) {									// Set debug level 0-2
-		txDelay+=atoi(arg)*200; response+=" delay="; response+=arg;
+		txDelay+=atoi(arg)*1000; response+=" delay="; response+=arg;
 	}
 	if (strcmp(cmd, "IP")==0) {										// List local IP address
 		response+=" local IP="; 
@@ -214,7 +202,7 @@ String WifiServer(char *cmd, char *arg) {
 	response +="</tr>";
 	response +="<tr><td style=\"border: 1px solid black;\">SF Setting</td><td style=\"border: 1px solid black;\">"; response += sf; response+="</tr>";
 	response +="<tr><td style=\"border: 1px solid black;\">Frequency</td><td style=\"border: 1px solid black;\">"; response += freq; response+="</tr>";
-	response +="<tr><td style=\"border: 1px solid black;\">Timing Correction</td><td style=\"border: 1px solid black;\">"; response += txDelay; response+="</tr>";
+	response +="<tr><td style=\"border: 1px solid black;\">Timing Correction (uSec)</td><td style=\"border: 1px solid black;\">"; response += txDelay; response+="</tr>";
 	response +="<tr><td>&nbsp</td><td> </tr>";
 			
 	response +="</table>";
@@ -225,7 +213,7 @@ String WifiServer(char *cmd, char *arg) {
 	response +="Click <a href=\"/NEWSSID\">here</a> to reset accesspoint<br>";
 
 	response +="Set txDelay level: ";
-	response +=" <a href=\"DELAY=1\">Higher  </a>";
+	response +=" <a href=\"DELAY=1\">Higher</a><nbsp><nbsp><nbsp><nbsp>";
 	response +=" <a href=\"DELAY=-1\">Lower</a>";
 	response +=" <br><br>";
 	

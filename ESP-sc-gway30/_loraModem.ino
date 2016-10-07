@@ -1,34 +1,22 @@
-/*******************************************************************************
- * Copyright (c) 2016 Maarten Westenberg version for ESP8266
- * Verison 3.0.0
- * Date: 2016-09-27
- *
- * 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
- *	and many others.
- *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
- *
- * The protocols used in this 1ch gateway: 
- * 1. LoRA Specification version V1.0 and V1.1 for Gateway-Node communication
- *	
- * 2. Semtech Basic communication protocol between Lora gateway and server version 3.0.0
- *	https://github.com/Lora-net/packet_forwarder/blob/master/PROTOCOL.TXT
- *
- * Notes: 
- * - Once call gethostbyname() to get IP for services, after that only use IP
- *	 addresses (too many gethost name makes ESP unstable)
- * - Only call yield() in main stream (not for background NTP sync). 
- *
- *******************************************************************************/
-//#include <Esp.h>
-//#include "loraModem.h"
-//#include "ESP-sc-gway.h"
-// NOTE: Header files contained in the main sketch don't need to be
-//		included a second time.
-
+//
+// Copyright (c) 2016 Maarten Westenberg version for ESP8266
+// Verison 3.1.0
+// Date: 2016-10-07
+//
+// 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
+//	and many others.
+//
+// All rights reserved. This program and the accompanying materials
+// are made available under the terms of the MIT License
+// which accompanies this distribution, and is available at
+// https://opensource.org/licenses/mit-license.php
+//
+// Author: Maarten Westenberg
+// Version: 3.1.0
+// Date: 2016-10-07
+//
+// This file contains the LoRa modem specific code enabling to receive
+// and transmit packages/messages.
 
 
 // ============================================================================
@@ -57,7 +45,7 @@ void unselectreceiver()
 // Read one byte value, par addr is address
 // Returns the value of register(addr)
 // ----------------------------------------------------------------------------
-byte readRegister(byte addr)
+uint8_t readRegister(uint8_t addr)
 {
     selectreceiver();
 	SPI.beginTransaction(SPISettings(50000, MSBFIRST, SPI_MODE0));
@@ -73,7 +61,7 @@ byte readRegister(byte addr)
 // Write value to a register with address addr. 
 // Function writes one byte at a time.
 // ----------------------------------------------------------------------------
-void writeRegister(byte addr, byte value)
+void writeRegister(uint8_t addr, uint8_t value)
 {
     unsigned char spibuf[2];
 
@@ -167,8 +155,9 @@ void setPow(uint8_t powe) {
 	else if (powe < 2) powe =2;
 	
 	uint8_t pac = 0x80 | (powe & 0xF);
-	writeRegister(REG_PAC,pac);
-	writeRegister(REG_PADAC, readRegister(REG_PADAC)|0x4);
+	writeRegister(REG_PAC,pac);								// set 0x09 to pac
+	
+	
 	
 	// XXX Power settings for CFG_sx1272 are different
 	
@@ -182,7 +171,7 @@ void setPow(uint8_t powe) {
 static void opmodeLora() {
     uint8_t u = OPMODE_LORA;
 #ifdef CFG_sx1276_radio
-    u |= 0x8;   // TBD: sx1276 high freq
+    u |= 0x8;   											// TBD: sx1276 high freq
 #endif
     writeRegister(REG_OPMODE, u);
 }
@@ -192,9 +181,9 @@ static void opmodeLora() {
 // Set the opmode to a value as defined on top
 // Values are 0x00 to 0x07
 // ----------------------------------------------------------------------------
-static void opmode (uint8_t mode) {
+static void opmode(uint8_t mode) {
     writeRegister(REG_OPMODE, (readRegister(REG_OPMODE) & ~OPMODE_MASK) | mode);
-	writeRegister(REG_OPMODE, (readRegister(REG_OPMODE) & ~OPMODE_MASK) | mode);
+//	writeRegister(REG_OPMODE, (readRegister(REG_OPMODE) & ~OPMODE_MASK) | mode);
 }
 
 
@@ -231,12 +220,10 @@ void rxLoraModem()
 	opmodeLora();
 	
 	// Put the radio in sleep mode
-    opmode(OPMODE_SLEEP);
+    opmode(OPMODE_SLEEP);										// set 0x01 to 0x00
 	
 	// 3. Set frequency based on value in freq
-	setFreq(freq);
-
-    writeRegister(REG_SYNC_WORD, 0x34); // LoRaWAN public sync word
+	setFreq(freq);												// set to 868.1MHz
 
 	// Set spreading Factor
     if (sx1272) {
@@ -267,11 +254,13 @@ void rxLoraModem()
 	
 	// Max Payload length is dependent on 256byte buffer. At startup TX starts at
 	// 0x80 and RX at 0x00. RX therefore maximized at 128 Bytes
-    writeRegister(REG_MAX_PAYLOAD_LENGTH,0x80);					// 0x23, 0x80
+    writeRegister(REG_MAX_PAYLOAD_LENGTH,0x80);					// set 0x23 to 0x80
     writeRegister(REG_PAYLOAD_LENGTH,PAYLOAD_LENGTH);			// 0x22, 0x40; Payload is 64Byte long
-    writeRegister(REG_HOP_PERIOD,0x00);							// 0x24, 0x00 was 0xFF
-    writeRegister(REG_FIFO_ADDR_PTR, readRegister(REG_FIFO_RX_BASE_AD));	// 0x0D, 0x0F
+	
+    writeRegister(REG_FIFO_ADDR_PTR, readRegister(REG_FIFO_RX_BASE_AD));	// set 0x0D to 0x0F
 
+	writeRegister(REG_HOP_PERIOD,0x00);							// 0x24, 0x00 was 0xFF
+	
     // Low Noise Amplifier used in receiver
     writeRegister(REG_LNA, LNA_MAX_GAIN);  						// 0x0C, 0x23
 	
@@ -303,62 +292,28 @@ void rxLoraModem()
 // ----------------------------------------------------------------------------
 void loraWait(uint32_t tmst) {
 
-	uint32_t startTime = micros();							// Start of the loraWait function
-	uint32_t nowTime;										// to prevent micros(0) to creep over 0xFFFFFF
-	
-	if ((nowTime = micros()) > tmst) {
-		// If difference larger than 8 secs, no rollover. Waiting would take too long
-		if ((0xFFFFFFFF - nowTime + tmst) > 8000000)
-		{
-			Serial.print(F("loraWait:: ERROR, micros="));
-			Serial.print(nowTime);
-			Serial.print(F(", tmst="));
-			Serial.print(tmst);
-			Serial.print(F(", wait="));
-			Serial.println(0xFFFFFFFF - nowTime + tmst);
-			delay(100);
-			return;
-		}
-		if (debug >= 1) {
-			Serial.print(F("Rollover, micros="));
-			Serial.print(nowTime);
-			Serial.print(F(", tmst="));
-			Serial.print(tmst);
-			Serial.print(F(", wait="));
-			Serial.println(0xFFFFFFFF - nowTime + tmst);
-		}
+	uint32_t startTime = micros();						// Start of the loraWait function
+	tmst += txDelay;
+	uint32_t waitTime = tmst - micros();
+		
+	while (waitTime > 16000) {
+		delay(16);										// use regular delay() including yield
+		waitTime= tmst - micros();
 	}
-	else if ((tmst - nowTime) > 8000000) {
-		Serial.print(F("Wait ERROR, micros="));
-		Serial.print(nowTime);
-		Serial.print(F(", tmst="));
+	if (waitTime>0) delayMicroseconds(waitTime);
+	
+	//yield();
+	if (debug >=1) { 
+		Serial.print(F("start: ")); 
+		Serial.print(startTime);
+		Serial.print(F(", end: "));
 		Serial.print(tmst);
-		Serial.print(F(", wait="));
-		Serial.println(tmst - nowTime);
-		return;
+		Serial.print(F(", waited: "));
+		Serial.print(tmst - startTime);
+		Serial.print(F(", delay="));
+		Serial.print(txDelay);
+		Serial.println();
 	}
-	else if (debug >= 2) {
-		Serial.print(F("Waiting, micros="));
-		Serial.print(nowTime);
-		Serial.print(F(", tmst="));
-		Serial.print(tmst);
-		Serial.print(F(", wait="));
-		Serial.println(tmst - nowTime);
-		return;
-	}
-	
-	// First deal with the situation of overflow, tmst < micros();
-	while ((nowTime = micros()) > tmst) {					// Buffer overflow situation, correct 2^32
-		// While we can wait 16000 usecs
-		if ((0xFFFFFFFF - nowTime + tmst) > 15000) delay(15);
-		else delayMicroseconds(0xFFFFFFFF - nowTime + tmst);	// Last uSec wait if longer times have been waited out.
-	}
-	
-	while ((nowTime = micros()) < tmst) {
-		if ((tmst- nowTime) > 15000) delay(14);
-		else delayMicroseconds(tmst - nowTime);				// Last uSec wait if longer times have been waited out.
-	}
-	delayMicroseconds(txDelay);								// extra correction (only positive numbers allowed)
 }
 
 
@@ -391,47 +346,47 @@ static void txLoraModem(uint8_t *payLoad, uint8_t payLength, uint32_t tmst,
 						uint8_t powe, uint32_t freq, uint8_t crc, uint8_t iiq)
 {
 	if (debug>=1) {
-		Serial.print(F("txLoraModem:: "));
-		Serial.print(F("powe: ")); Serial.print(powe);
+		// Make sure that all serial stuff is done before continuing
+		Serial.print(F("txLoraModem::"));
+		Serial.print(F("  powe: ")); Serial.print(powe);
 		Serial.print(F(", freq: ")); Serial.print(freq);
 		Serial.print(F(", crc: ")); Serial.print(crc);
 		Serial.print(F(", iiq: 0X")); Serial.print(iiq,HEX);
 		Serial.println();
+		Serial.flush();
 	}
 	
 	// 1. Select LoRa modem from sleep mode
-	opmodeLora();
+	opmodeLora();												// set register 0x01 to 0x80
 	
 	// Assert the value of the current mode
 	ASSERT((readRegister(REG_OPMODE) & OPMODE_LORA) != 0);
 	
 	// 2. enter standby mode (required for FIFO loading))
-	opmode(OPMODE_STANDBY);
+	opmode(OPMODE_STANDBY);										// set 0x01 to 0x01
 	
 	// 3. Init spreading factor and other Modem setting
     sf_t sf = _SPREADING;
 	setRate(sf, crc);
 	
-	//writeRegister(REG_HOP_PERIOD, 0x00);						// 0x24 only for receivers
+	//writeRegister(REG_HOP_PERIOD, 0x00);						// set 0x24 to 0x00 only for receivers
 	
 	// 4. Init Frequency, config channel
 	setFreq(freq);
 
-	// 5. Config PA Ramp up time
-	writeRegister(REG_PARAMP, (readRegister(REG_PARAMP) & 0xF0) | 0x08); // set PA ramp-up time 50 uSec
+
 	
 	// 6. Set power level, REG_PAC
 	setPow(powe);
 	
-	// prevent node to node communication
+	// 7. prevent node to node communication
 	writeRegister(REG_INVERTIQ,iiq);							// 0x33, (0x27 or 0x40)
 
-	// 7. set sync word
-    writeRegister(REG_SYNC_WORD, 0x34);							// LORA_MAC_PREAMBLE
+
 	
 	// 8. set the IRQ mapping DIO0=TxDone DIO1=NOP DIO2=NOP (or lesss for 1ch gateway)
-    writeRegister(REG_DIO_MAPPING_1, MAP_DIO0_LORA_TXDONE|MAP_DIO1_LORA_NOP|MAP_DIO2_LORA_NOP);
-	//writeRegister(REG_DIO_MAPPING_1, MAP_DIO0_LORA_TXDONE);
+    //writeRegister(REG_DIO_MAPPING_1, MAP_DIO0_LORA_TXDONE|MAP_DIO1_LORA_NOP|MAP_DIO2_LORA_NOP);
+	writeRegister(REG_DIO_MAPPING_1, MAP_DIO0_LORA_TXDONE);		// set 0x40 to 0x40
 	
 	// 9. clear all radio IRQ flags
     writeRegister(REG_IRQ_FLAGS, 0xFF);
@@ -440,41 +395,26 @@ static void txLoraModem(uint8_t *payLoad, uint8_t payLength, uint32_t tmst,
     writeRegister(REG_IRQ_FLAGS_MASK, ~IRQ_LORA_TXDONE_MASK);
 	
 	// txLora
-	//opmode(OPMODE_FSTX);	// 0x02
+	opmode(OPMODE_FSTX);										// set 0x01 to 0x02 (actual value becomes 0x82)
 	
 	// 11, 12, 13, 14. write the buffer to the FiFo
 	sendPkt(payLoad, payLength, tmst);
 
 	// wait extra delay out. The delayMicroseconds timer is accurate until 16383 uSec.
-	//												// XXX We should not use yield() outside loop()
-	uint32_t startTime = micros();
 	loraWait(tmst);
 	
 	// 15. Initiate actual transmission of FiFo
-	opmode(OPMODE_TX);
-	
-	yield();
-	if (debug >=1) { 
-		Serial.print(F("start: ")); 
-		Serial.print(startTime);
-		Serial.print(F(", end: "));
-		Serial.print(tmst);
-		Serial.print(F(", waited: "));
-		Serial.print(tmst - startTime);
-		Serial.print(F(", delay="));
-		Serial.print(txDelay);
-		Serial.println();
-	}
+	opmode(OPMODE_TX);											// set 0x01 to 0x03 (actual value becomes 0x83)
 	
 	// XXX Intead of handling the interrupt of dio0, we wait it out, Not using delay(1);
 	// for trasmitter this should not be a problem.
-	while(digitalRead(dio0) == 0) {  }						// XXX tx done? handle by interrupt
+	while(digitalRead(dio0) == 0) {  }							// XXX tx done? handle by interrupt
 
 	// ----- TX SUCCESS, SWITCH BACK TO RX CONTINUOUS --------
 	// Successful TX cycle put's radio in standby mode.
 	
 	// Reset the IRQ register
-	writeRegister(REG_IRQ_FLAGS, 0xFF);
+	writeRegister(REG_IRQ_FLAGS, 0xFF);							// set 0x12 to 0xFF
 
 	// Give control back to continuous receive setup
 	// Put's the radio in sleep mode and then in stand-by
@@ -488,14 +428,15 @@ static void txLoraModem(uint8_t *payLoad, uint8_t payLength, uint32_t tmst,
 // ----------------------------------------------------------------------------
 static void initLoraModem()
 {
-	opmode(OPMODE_SLEEP);
+	opmodeLora();												// set register 0x01 to 0x80
+	opmode(OPMODE_SLEEP);										// set register 0x01 to 0x00
 	
     digitalWrite(RST, HIGH);
     delay(100);
     digitalWrite(RST, LOW);
     delay(100);
 	
-    byte version = readRegister(REG_VERSION);					// Read the LoRa chip version id
+    uint8_t version = readRegister(REG_VERSION);				// Read the LoRa chip version id
     if (version == 0x22) {
         // sx1272
         Serial.println(F("WARNING:: SX1272 detected"));
@@ -517,6 +458,15 @@ static void initLoraModem()
             die("");
         }
     }
+	// 7. set sync word
+    writeRegister(REG_SYNC_WORD, 0x34);							// set 0x39 to 0x34 LORA_MAC_PREAMBLE
+	
+	// 5. Config PA Ramp up time								// set 0x0A t0 
+	writeRegister(REG_PARAMP, (readRegister(REG_PARAMP) & 0xF0) | 0x08); // set PA ramp-up time 50 uSec
+	
+	// Set 0x4D PADAC for SX1276 ; XXX register is 0x5a for sx1272
+	writeRegister(REG_PADAC_SX1276,  0x84); 					// set 0x4D (PADAC) to 0x84
+	//writeRegister(REG_PADAC, readRegister(REG_PADAC)|0x4);
 	
 	// Set the radio in Continuous listen mode
 	rxLoraModem();
@@ -526,11 +476,11 @@ static void initLoraModem()
 
 // ----------------------------------------------------------------------------
 // This LoRa function reads a message from the LoRa transceiver
-// returns true when message correctly received or fails on error 
-// (CRC error for example).
+// returns message length read when message correctly received or 
+// it returns a negative value on error (CRC error for example).
 // UP function
 // ----------------------------------------------------------------------------
-bool receivePkt(uint8_t *payload)
+uint8_t receivePkt(uint8_t *payload)
 {
     // clear rxDone
     writeRegister(REG_IRQ_FLAGS, 0x40);						// 0x12; Clear RxDone
@@ -543,15 +493,14 @@ bool receivePkt(uint8_t *payload)
     if((irqflags & 0x20) == 0x20)
     {
         Serial.println(F("CRC error"));
-        writeRegister(REG_IRQ_FLAGS, 0x20);					// 0x12
-        return false;
+        writeRegister(REG_IRQ_FLAGS, 0x20);					// set 0x12 to 0x20
+        return -1;
     } else {
 
         cp_nb_rx_ok++;										// Receive OK statistics counter
 
-        byte currentAddr = readRegister(REG_FIFO_RX_CURRENT_ADDR);	// 0x10
-        byte receivedCount = readRegister(REG_RX_NB_BYTES);	// 0x13; How many bytes were read
-        receivedbytes = receivedCount;
+        uint8_t currentAddr = readRegister(REG_FIFO_RX_CURRENT_ADDR);	// 0x10
+        uint8_t receivedCount = readRegister(REG_RX_NB_BYTES);	// 0x13; How many bytes were read
 
         //writeRegister(REG_FIFO_ADDR_PTR, currentAddr);	// 0x0D XXX??? This sets the FiFo higher!!!
 
@@ -560,8 +509,9 @@ bool receivePkt(uint8_t *payload)
             payload[i] = readRegister(REG_FIFO);			// 0x00
         }
 		//yield();
+		return(receivedCount);
     }
-    return true;
+    return 0;
 }
 
 
@@ -587,11 +537,6 @@ int sendPacket(uint8_t *buff_down, uint8_t length) {
 	// tmst : 1800642 									// for example
 	// datr	: "SF7BW125"
 	
-	if (debug >= 2) Serial.println(F("sendPacket called"));
-	
-	// Trx Time received the message
-    uint32_t trx = (uint32_t) micros();
-	
 	// 12-byte header;
 	//		HDR (1 byte)
 	//		
@@ -601,7 +546,7 @@ int sendPacket(uint8_t *buff_down, uint8_t length) {
 	//		NetID (3 byte)
 	//		DevAddr (4 byte) [ 31..25]:NwkID , [24..0]:NwkAddr
  	//		DLSettings (1 byte)
-	//		RxDelay (1byte)
+	//		RxDelay (1 byte)
 	//		CFList (fill to 16 bytes)
 	
 	int i=0;
@@ -634,37 +579,53 @@ int sendPacket(uint8_t *buff_down, uint8_t length) {
 	uint8_t powe = root["txpk"]["powe"];
 	uint32_t tmst = (uint32_t) root["txpk"]["tmst"].as<unsigned long>();
 
-	
 	// Not used in the protocol:
 	const char * datr = root["txpk"]["datr"];
-	const double ff= root["txpk"]["freq"];
+	const float ff= root["txpk"]["freq"];
 	const char * modu = root["txpk"]["modu"];
+	const char * codr = root["txpk"]["codr"];
 	//if (root["txpk"].containsKey("imme") ) {
 	//	const bool imme = root["txpk"]["imme"];			// Immediate Transmit (tmst don't care)
 	//}
-	const uint32_t fff = (uint32_t)(ff*1000000);
-		
+
+	const uint32_t fff = (uint32_t) ((uint32_t)((ff+0.000035)*1000)) * 1000;
+	
 	if (data != NULL) {
 		if (debug>=2) { Serial.print(F("data: ")); Serial.println((char *) data); }
 	}
 	else {
-		Serial.println(F("sendPacket:: data is NULL"));
+		Serial.println(F("sendPacket:: ERROR data is NULL"));
 		return(-1);
 	}
 	
 	uint8_t iiq = (ipol? 0x40: 0x27);					// if ipol==true 0x40 else 0x27
 	uint8_t crc = 0x00;									// switch CRC off for TX
 	uint8_t payLength = base64_dec_len((char *) data, strlen(data));
-	uint8_t payLoad[payLength];
+	uint8_t payLoad[payLength];							// Declare buffer
 	base64_decode((char *) payLoad, (char *) data, strlen(data));
 
+	uint32_t w = (uint32_t) (tmst - micros());
+#if _STRICT_1CH == 1
+	// DO not use RX2 or JOIN2 as they contain other frequencies
+	if ((w>1000000) && (w<3000000)) { tmst-=1000000; }
+	else if ((w>6000000) && (w<7000000)) { tmst-=1000000; }
 	txLoraModem(payLoad, payLength, tmst, powe, freq, crc, iiq);
-	
-	if ((debug >= 2) && (fff != freq)) {
-		Serial.print(F("sendPacket:: WARNING used freq="));
-		Serial.print(freq);
-		Serial.print(F(", freq req="));
-		Serial.println(fff);
+#else
+	txLoraModem(payLoad, payLength, tmst, powe, fff, crc, iiq);
+#endif
+
+	if (debug>=1) {
+		Serial.print(F("Request:: "));
+		Serial.print(F(" datr=")); Serial.print(datr);
+		Serial.print(F(" freq=")); Serial.print(fff);
+		Serial.print(F(" modu=")); Serial.print(modu);
+		Serial.print(F(" powe=")); Serial.print(powe);
+		Serial.print(F(" codr=")); Serial.print(codr);
+		Serial.print(F(" tmst=")); Serial.print(tmst);
+		Serial.print(F(" wait=")); Serial.print(w);
+		Serial.print(F(" ipol=")); Serial.print(ipol);
+		Serial.println();
+		Serial.println();								// empty line between messages
 	}
 	
 	if (payLength != psize) {
@@ -684,6 +645,177 @@ int sendPacket(uint8_t *buff_down, uint8_t length) {
 }
 
 
+
+
+// ----------------------------------------------------------------------------
+// Based on the information read from the LoRa transceiver (or fake message)
+// build a gateway message to send upstream.
+//
+// parameters:
+// tmst: Timestamp to include in the upstream message
+// buff_up: The buffer that is generated for upstream
+// message: The payload message toincludein the the buff_up
+// messageLength: The number of bytes received by the LoRa transceiver
+//
+// ----------------------------------------------------------------------------
+int buildPacket(uint32_t tmst, uint8_t *buff_up, uint8_t *message, char messageLength) {
+
+	long SNR;
+    int rssicorr;
+	int prssi;											// packet rssi
+	char cfreq[12] = {0};								// Character array to hold freq in MHz
+	lastTmst = tmst;									// Following/according to spec
+	int buff_index=0;
+	
+	uint8_t value = readRegister(REG_PKT_SNR_VALUE);		// 0x19; 
+    if( value & 0x80 ) {								// The SNR sign bit is 1
+		// Invert and divide by 4
+		value = ( ( ~value + 1 ) & 0xFF ) >> 2;
+		SNR = -value;
+    }
+	else {
+		// Divide by 4
+		SNR = ( value & 0xFF ) >> 2;
+	}
+	
+	prssi = readRegister(REG_PKT_RSSI);				// read register 0x1A
+    
+	// Correction of RSSI value based on chip used.	
+	if (sx1272) {
+		rssicorr = 139;
+	} else {											// Probably SX1276 or RFM95
+		rssicorr = 157;
+	}
+			
+	if (debug>=1) {
+		Serial.print(F("Packet RSSI: "));
+		Serial.print(prssi-rssicorr);
+		Serial.print(F(" RSSI: "));
+		Serial.print(readRegister(0x1B)-rssicorr);
+		Serial.print(F(" SNR: "));
+		Serial.print(SNR);
+		Serial.print(F(" Length: "));
+		Serial.print((int)messageLength);
+		Serial.print(F(" -> "));
+		int i;
+		for (i=0; i< messageLength; i++) {
+					Serial.print(message[i],HEX);
+					Serial.print(' ');
+		}
+		Serial.println();
+		yield();
+	}
+			
+	int j;
+	// XXX Base64 library is nopad. So we may have to add padding characters until
+	// 	length is multiple of 4!
+	int encodedLen = base64_enc_len(messageLength);		// max 341
+	base64_encode(b64, (char *) message, messageLength);// max 341
+
+	// pre-fill the data buffer with fixed fields
+	buff_up[0] = PROTOCOL_VERSION;						// 0x01 still
+	buff_up[3] = PKT_PUSH_DATA;							// 0x00
+
+	// READ MAC ADDRESS OF ESP8266, and insert 0xFF 0xFF in the middle
+	buff_up[4]  = MAC_array[0];
+	buff_up[5]  = MAC_array[1];
+	buff_up[6]  = MAC_array[2];
+	buff_up[7]  = 0xFF;
+	buff_up[8]  = 0xFF;
+	buff_up[9]  = MAC_array[3];
+	buff_up[10] = MAC_array[4];
+	buff_up[11] = MAC_array[5];
+
+	// start composing datagram with the header 
+	uint8_t token_h = (uint8_t)rand(); 					// random token
+	uint8_t token_l = (uint8_t)rand(); 					// random token
+	buff_up[1] = token_h;
+	buff_up[2] = token_l;
+	buff_index = 12; 									// 12-byte binary (!) header
+
+	// start of JSON structure that will make payload
+	memcpy((void *)(buff_up + buff_index), (void *)"{\"rxpk\":[", 9);
+	buff_index += 9;
+	buff_up[buff_index] = '{';
+	++buff_index;
+	j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, "\"tmst\":%u", tmst);
+	buff_index += j;
+	ftoa((double)freq/1000000,cfreq,6);					// XXX This can be done better
+	j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"chan\":%1u,\"rfch\":%1u,\"freq\":%s", 0, 0, cfreq);
+	buff_index += j;
+	memcpy((void *)(buff_up + buff_index), (void *)",\"stat\":1", 9);
+	buff_index += 9;
+	memcpy((void *)(buff_up + buff_index), (void *)",\"modu\":\"LORA\"", 14);
+	buff_index += 14;
+	/* Lora datarate & bandwidth, 16-19 useful chars */
+	switch (sf) {
+		case SF7:
+			memcpy((void *)(buff_up + buff_index), (void *)",\"datr\":\"SF7", 12);
+			buff_index += 12;
+			break;
+		case SF8:
+                memcpy((void *)(buff_up + buff_index), (void *)",\"datr\":\"SF8", 12);
+                buff_index += 12;
+                break;
+		case SF9:
+                memcpy((void *)(buff_up + buff_index), (void *)",\"datr\":\"SF9", 12);
+                buff_index += 12;
+                break;
+		case SF10:
+                memcpy((void *)(buff_up + buff_index), (void *)",\"datr\":\"SF10", 13);
+                buff_index += 13;
+                break;
+		case SF11:
+                memcpy((void *)(buff_up + buff_index), (void *)",\"datr\":\"SF11", 13);
+                buff_index += 13;
+                break;
+		case SF12:
+                memcpy((void *)(buff_up + buff_index), (void *)",\"datr\":\"SF12", 13);
+                buff_index += 13;
+                break;
+		default:
+                memcpy((void *)(buff_up + buff_index), (void *)",\"datr\":\"SF?", 12);
+                buff_index += 12;
+	}
+	memcpy((void *)(buff_up + buff_index), (void *)"BW125\"", 6);
+	buff_index += 6;
+	memcpy((void *)(buff_up + buff_index), (void *)",\"codr\":\"4/5\"", 13);
+	buff_index += 13;
+	j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"lsnr\":%li", SNR);
+	buff_index += j;
+	j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"rssi\":%d,\"size\":%u", prssi-rssicorr, messageLength);
+	buff_index += j;
+	memcpy((void *)(buff_up + buff_index), (void *)",\"data\":\"", 9);
+	buff_index += 9;
+
+	// Use gBase64 library to fill in the data string
+	encodedLen = base64_enc_len(messageLength);			// max 341
+	j = base64_encode((char *)(buff_up + buff_index), (char *) message, messageLength);
+
+	buff_index += j;
+	buff_up[buff_index] = '"';
+	++buff_index;
+
+	// End of packet serialization
+	buff_up[buff_index] = '}';
+	++buff_index;
+	buff_up[buff_index] = ']';
+	++buff_index;
+	
+	// end of JSON datagram payload */
+	buff_up[buff_index] = '}';
+	++buff_index;
+	buff_up[buff_index] = 0; 							// add string terminator, for safety
+
+	if (debug>=1) {
+		Serial.print(F("RXPK:: "));
+		Serial.println((char *)(buff_up + 12));			// DEBUG: display JSON payload
+	}
+            
+	return(buff_index);
+}
+
+
 // ----------------------------------------------------------------------------
 // Receive a LoRa package over the air
 //
@@ -694,173 +826,27 @@ int sendPacket(uint8_t *buff_down, uint8_t length) {
 // ----------------------------------------------------------------------------
 int receivePacket(uint8_t * buff_up) {
 
-    // long int SNR;
 	long SNR;
     int rssicorr;
 	char cfreq[12] = {0};										// Character array to hold freq in MHz
-
-	// delay(1);
+	uint8_t messageLength = 0;
 	
 	// Regular message received, see SX1276 spec table 18
 	// Next statement could also be a "while" to combine several messages received in one UDP message
-	// The Semtech Gateway spec does allow this.
+	// as the Semtech Gateway spec does allow this.
     if(digitalRead(dio0) == 1)									// READY?
     {
 		// Take the timestamp as soon as possible, to have accurate recepion timestamp
 		// TODO: tmst can jump if micros() overflow.
-		uint32_t tmst = (uint32_t) micros();				// Only microseconds, rollover in 
-		lastTmst = tmst;									// MMMM according to spec
+		uint32_t tmst = (uint32_t) micros();					// Only microseconds, rollover in 
+		lastTmst = tmst;										// Following/according to spec
 		
 		if (debug >= 2) Serial.println(F("receivePacket:: LoRa message ready"));
 		
-		// Handle the physical data read from FiFo 
-        if(receivePkt(message)) {
+		// Handle the physical data read from FiFo
+        if((messageLength = receivePkt(message)) > 0){
 			
-            byte value = readRegister(REG_PKT_SNR_VALUE);		// 0x19; 
-            if( value & 0x80 ) // The SNR sign bit is 1
-            {
-                // Invert and divide by 4
-                value = ( ( ~value + 1 ) & 0xFF ) >> 2;
-                SNR = -value;
-            }
-            else
-            {
-                // Divide by 4
-                SNR = ( value & 0xFF ) >> 2;
-            }
-            
-            if (sx1272) {
-                rssicorr = 139;
-            } else {											// Probably SX1276 or RFM95
-                rssicorr = 157;
-            }
-			
-			if (debug>=1) {
-			    Serial.print(F("Packet RSSI: "));
-				Serial.print(readRegister(0x1A)-rssicorr);
-				Serial.print(F(" RSSI: "));
-				Serial.print(readRegister(0x1B)-rssicorr);
-				Serial.print(F(" SNR: "));
-				Serial.print(SNR);
-				Serial.print(F(" Length: "));
-				Serial.print((int)receivedbytes);
-				Serial.print(F(" -> "));
-				int i;
-				for (i=0; i< receivedbytes; i++) {
-					Serial.print(message[i],HEX);
-					Serial.print(' ');
-				}
-				Serial.println();
-				yield();
-			}
-			
-            int j;
-			// XXX Base64 library is nopad. So we may have to add padding characters until
-			// 	length is multiple of 4!
-			int encodedLen = base64_enc_len(receivedbytes);		// max 341
-			base64_encode(b64, (char *) message, receivedbytes);// max 341
-
-            int buff_index=0;
-
-            // pre-fill the data buffer with fixed fields
-            buff_up[0] = PROTOCOL_VERSION;						// 0x01 still
-            buff_up[3] = PKT_PUSH_DATA;							// 0x00
-
-			// READ MAC ADDRESS OF ESP8266, and insert 0xFF 0xFF in the middle
-            buff_up[4]  = MAC_array[0];
-            buff_up[5]  = MAC_array[1];
-            buff_up[6]  = MAC_array[2];
-            buff_up[7]  = 0xFF;
-            buff_up[8]  = 0xFF;
-            buff_up[9]  = MAC_array[3];
-            buff_up[10] = MAC_array[4];
-            buff_up[11] = MAC_array[5];
-
-            // start composing datagram with the header 
-            uint8_t token_h = (uint8_t)rand(); 					// random token
-            uint8_t token_l = (uint8_t)rand(); 					// random token
-            buff_up[1] = token_h;
-            buff_up[2] = token_l;
-            buff_index = 12; 									// 12-byte header
-
-            // start of JSON structure that will make payload
-            memcpy((void *)(buff_up + buff_index), (void *)"{\"rxpk\":[", 9);
-            buff_index += 9;
-            buff_up[buff_index] = '{';
-            ++buff_index;
-            j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, "\"tmst\":%u", tmst);
-            buff_index += j;
-			ftoa((double)freq/1000000,cfreq,6);					// XXX This can be done better
-            j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"chan\":%1u,\"rfch\":%1u,\"freq\":%s", 0, 0, cfreq);
-            buff_index += j;
-            memcpy((void *)(buff_up + buff_index), (void *)",\"stat\":1", 9);
-            buff_index += 9;
-            memcpy((void *)(buff_up + buff_index), (void *)",\"modu\":\"LORA\"", 14);
-            buff_index += 14;
-            /* Lora datarate & bandwidth, 16-19 useful chars */
-            switch (sf) {
-            case SF7:
-                memcpy((void *)(buff_up + buff_index), (void *)",\"datr\":\"SF7", 12);
-                buff_index += 12;
-                break;
-            case SF8:
-                memcpy((void *)(buff_up + buff_index), (void *)",\"datr\":\"SF8", 12);
-                buff_index += 12;
-                break;
-            case SF9:
-                memcpy((void *)(buff_up + buff_index), (void *)",\"datr\":\"SF9", 12);
-                buff_index += 12;
-                break;
-            case SF10:
-                memcpy((void *)(buff_up + buff_index), (void *)",\"datr\":\"SF10", 13);
-                buff_index += 13;
-                break;
-            case SF11:
-                memcpy((void *)(buff_up + buff_index), (void *)",\"datr\":\"SF11", 13);
-                buff_index += 13;
-                break;
-            case SF12:
-                memcpy((void *)(buff_up + buff_index), (void *)",\"datr\":\"SF12", 13);
-                buff_index += 13;
-                break;
-            default:
-                memcpy((void *)(buff_up + buff_index), (void *)",\"datr\":\"SF?", 12);
-                buff_index += 12;
-            }
-            memcpy((void *)(buff_up + buff_index), (void *)"BW125\"", 6);
-            buff_index += 6;
-            memcpy((void *)(buff_up + buff_index), (void *)",\"codr\":\"4/5\"", 13);
-            buff_index += 13;
-            j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"lsnr\":%li", SNR);
-            buff_index += j;
-            j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"rssi\":%d,\"size\":%u", readRegister(0x1A)-rssicorr, receivedbytes);
-            buff_index += j;
-            memcpy((void *)(buff_up + buff_index), (void *)",\"data\":\"", 9);
-            buff_index += 9;
-
-			// Use gBase64 library
-			encodedLen = base64_enc_len(receivedbytes);		// max 341
-			j = base64_encode((char *)(buff_up + buff_index), (char *) message, receivedbytes);
-
-            buff_index += j;
-            buff_up[buff_index] = '"';
-            ++buff_index;
-
-            // End of packet serialization
-            buff_up[buff_index] = '}';
-            ++buff_index;
-            buff_up[buff_index] = ']';
-            ++buff_index;
-            // end of JSON datagram payload */
-            buff_up[buff_index] = '}';
-            ++buff_index;
-            buff_up[buff_index] = 0; 						// add string terminator, for safety
-
-			if (debug>=1) {
-				Serial.print(F("RXPK:: "));
-				Serial.println((char *)(buff_up + 12));		// DEBUG: display JSON payload
-			}
-            
+            int buff_index = buildPacket(tmst, buff_up, message, messageLength);
 			return(buff_index);
 			
         } // received a message
@@ -869,5 +855,7 @@ int receivePacket(uint8_t * buff_up) {
 	
 	return(-1);
 }
+
+
 
 

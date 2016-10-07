@@ -1,7 +1,19 @@
 //
+// Copyright (c) 2016 Maarten Westenberg version for ESP8266
+// Verison 3.1.0
+// Date: 2016-10-07
+//
+// 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
+//	and many other contributors.
+//
+// All rights reserved. This program and the accompanying materials
+// are made available under the terms of the MIT License
+// which accompanies this distribution, and is available at
+// https://opensource.org/licenses/mit-license.php
+//
 // Author: Maarten Westenberg
-// Version: 3.0.0
-// Date: 2016-09-27
+// Version: 3.1.0
+// Date: 2016-10-07
 //
 // This file contains a number of compile-time settings that can be set on (=1) or off (=0)
 // The disadvantage of compile time is minor compared to the memory gain of not having
@@ -37,6 +49,7 @@ uint32_t  freq = 868100000; 					// Channel 0, 868.1 MHz
 #define REG_OPMODE                  0x01
 #define REG_PAC                     0x09
 #define REG_PARAMP                  0x0A
+#define REG_LNA                     0x0C
 #define REG_FIFO_ADDR_PTR           0x0D
 #define REG_FIFO_TX_BASE_AD         0x0E
 #define REG_FIFO_RX_BASE_AD         0x0F
@@ -46,6 +59,7 @@ uint32_t  freq = 868100000; 					// Channel 0, 868.1 MHz
 #define REG_IRQ_FLAGS               0x12
 #define REG_RX_NB_BYTES             0x13
 #define REG_PKT_SNR_VALUE			0x19
+#define REG_PKT_RSSI				0x1A
 #define REG_MODEM_CONFIG1           0x1D
 #define REG_MODEM_CONFIG2           0x1E
 #define REG_SYMB_TIMEOUT_LSB  		0x1F
@@ -56,6 +70,7 @@ uint32_t  freq = 868100000; 					// Channel 0, 868.1 MHz
 #define REG_MODEM_CONFIG3           0x26
 
 #define REG_INVERTIQ				0x33
+#define REG_DET_TRESH				0x37				// SF6
 #define REG_SYNC_WORD				0x39
 
 #define REG_DIO_MAPPING_1           0x40
@@ -63,6 +78,8 @@ uint32_t  freq = 868100000; 					// Channel 0, 868.1 MHz
 #define REG_VERSION	  				0x42
 
 #define REG_PADAC					0x5A
+#define REG_PADAC_SX1272			0x5A
+#define REG_PADAC_SX1276			0x4D
 
 // ----------------------------------------
 // Used by REG_PAYLOAD_LENGTH to set receive patyload lenth
@@ -93,7 +110,7 @@ uint32_t  freq = 868100000; 					// Channel 0, 868.1 MHz
 
 // ----------------------------------------
 // LOW NOISE AMPLIFIER
-#define REG_LNA                     0x0C
+
 #define LNA_MAX_GAIN                0x23
 #define LNA_OFF_GAIN                0x00
 #define LNA_LOW_GAIN		    	0x20

@@ -1,34 +1,42 @@
-/*******************************************************************************
- * Copyright (c) 2016 Maarten Westenberg version for ESP8266
- *
- * 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
- *	and many others.
- *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
- *
- * The protocols used in this 1ch gateway: 
- * 1. LoRA Specification version V1.0 and V1.1 for Gateway-Node communication
- *	
- * 2. Semtech Basic communication protocol between Lora gateway and server version 3.0.0
- *	https://github.com/Lora-net/packet_forwarder/blob/master/PROTOCOL.TXT
- *
- * Notes: 
- * - Once call gethostbyname() to get IP for services, after that only use IP
- *	 addresses (too many gethost name makes ESP unstable)
- * - Only call yield() in main stream (not for background NTP sync). 
- *
- *******************************************************************************/
+//
+// Copyright (c) 2016 Maarten Westenberg version for ESP8266
+// Verison 3.1.0
+// Date: 2016-10-07
+//
+// 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
+//	and many others.
+//
+// All rights reserved. This program and the accompanying materials
+// are made available under the terms of the MIT License
+// which accompanies this distribution, and is available at
+// https://opensource.org/licenses/mit-license.php
+//
+// Author: Maarten Westenberg
+// Version: 3.1.0
+// Date: 2016-10-07
+//
+// The protocols used in this 1ch gateway: 
+// 1. LoRA Specification version V1.0 and V1.1 for Gateway-Node communication
+//	
+// 2. Semtech Basic communication protocol between Lora gateway and server version 3.0.0
+//	https://github.com/Lora-net/packet_forwarder/blob/master/PROTOCOL.TXT
+//
+// Notes: 
+// - Once call gethostbyname() to get IP for services, after that only use IP
+//	 addresses (too many gethost name makes ESP unstable)
+// - Only call yield() in main stream (not for background NTP sync). 
+//
+// ----------------------------------------------------------------------------------------
 
 //
-#define VERSION " ! V. 3.0.0, 160927"
+#define VERSION " ! V. 3.1.0, 161007"
 
 #include "ESP-sc-gway.h"						// This file contains configuration of GWay
+
 #if WIFIMANAGER>0
 #include "FS.h"
 #endif
+
 #include <Esp.h>
 #include <string.h>
 #include <stdio.h>
@@ -45,6 +53,11 @@
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h>						// Library for ESP WiFi config through an AP
 #include <WiFiUdp.h>
+
+#if GATEWAYNODE==1
+#include "AES-128_V10.h"
+#endif
+
 extern "C" {
 #include "user_interface.h"
 #include "lwip/err.h"
@@ -65,7 +78,6 @@ byte currentMode = 0x81;
 uint8_t message[256];
 char b64[256];
 bool sx1272 = true;								// Actually we use sx1276/RFM95
-byte receivedbytes;
 
 uint32_t cp_nb_rx_rcv;
 uint32_t cp_nb_rx_ok;
@@ -128,9 +140,12 @@ SimpleTimer timer; 								// Timer is needed for delayed sending
 #define RX_BUFF_SIZE  1024						// Downstream received from MQTT
 #define STATUS_SIZE	  512						// This should(!) be enough based on the static text part.. was 1024
 
-uint8_t buff_up[TX_BUFF_SIZE]; 					// buffer to compose the upstream packet
-uint8_t buff_down[RX_BUFF_SIZE];
+uint8_t buff_up[TX_BUFF_SIZE]; 					// buffer to compose the upstream packet to backend server
+uint8_t buff_down[RX_BUFF_SIZE];				// Buffer for downstream
 uint16_t lastToken = 0x00;
+#if GATEWAYNODE==1
+uint16_t frameCount=0;							// We REALLY should write this to SPIFF file
+#endif
 
 // ----------------------------------------------------------------------------
 // DIE is not use actively in the source code anymore.
@@ -358,12 +373,15 @@ int WlanWriteWpa( char* ssid, char *pass) {
 //	the reconnect is done first thing.
 // ----------------------------------------------------------------------------
 int WlanConnect() {
-	// We start by connecting to a WiFi network 
+
+  // We start by connecting to a WiFi network
+  wifi_station_set_hostname( "espgway" );
   WiFiManager wifiManager;
   unsigned char agains = 0;
   unsigned char wpa_index = (WIFIMANAGER >0 ? 0 : 1);	// Skip over first record for WiFiManager
   Serial.print(F("WlanConnect:: wpa_index=")); Serial.println(wpa_index);
   int ledStatus = LOW;
+
   while (WiFi.status() != WL_CONNECTED)
   {
 	// Start with well-known access points in the list
@@ -419,7 +437,7 @@ int WlanConnect() {
 	return(-1);
 #endif
   }
-  
+
   Serial.print(F("WiFi connected. local IP address: ")); 
   Serial.println(WiFi.localIP());
   yield();
@@ -478,6 +496,7 @@ int readUdp(int packetSize, uint8_t * buff_down)
 			Serial.print(F(", port ")); Serial.print(remotePortNo);
 			Serial.print(F(", token: "));
 			Serial.println(token, HEX);
+			Serial.println();
 		}
 	break;
 	case PKT_PULL_DATA:	// 0x02 UP
@@ -637,7 +656,7 @@ bool UDPconnect() {
 
 // ----------------------------------------------------------------------------
 // Send UP periodic Pull_DATA message to server to keepalive the connection
-// and to invite the server to send downstream messages when available
+// and to invite the server to send downstream messages when these are available
 // *2, par. 5.2
 //	- Protocol Version (1 byte)
 //	- Random Token (2 bytes)
@@ -770,6 +789,7 @@ void setup () {
 	Serial.flush();
 	delay(1000);
 	
+	wifi_station_set_hostname( "espgway" );
 #if WIFIMANAGER==1
 	if (SPIFFS.begin()) Serial.println(F("SPIFFS loaded success"));
 	//SPIFFS.format();								// Do this one time only!!
@@ -792,7 +812,7 @@ void setup () {
 	yield();
 		
 	if (debug>=1) {
-		Serial.print(F("! debug: ")); 
+		Serial.print(F("debug=")); 
 		Serial.println(debug);
 		yield();
 	}
@@ -805,18 +825,18 @@ void setup () {
 		Serial.println();
 		yield();
 	}
-	//else {
-		Serial.print(F("Wlan Connected to "));
-		Serial.print(WiFi.SSID());
-		Serial.println();
-		delay(200);
-		// If we are here we are connected to WLAN
-		// So now test the UDP function
-		if (!UDPconnect()) {
-			Serial.println(F("Error UDPconnect"));
-		}
-		delay(500);
-	//}
+	
+	Serial.print(F("Wlan Connected to "));
+	Serial.print(WiFi.SSID());
+	Serial.println();
+	delay(200);
+	// If we are here we are connected to WLAN
+	// So now test the UDP function
+	if (!UDPconnect()) {
+		Serial.println(F("Error UDPconnect"));
+	}
+	delay(500);
+
 	 
 	WiFi.macAddress(MAC_array);
     for (int i = 0; i < sizeof(MAC_array); ++i){
@@ -969,7 +989,17 @@ void loop ()
 	//	
 	nowseconds = (uint32_t) millis() /1000;
     if (nowseconds - stattime >= _STAT_INTERVAL) {		// Wake up every xx seconds
-        sendstat();										// Show the status message and send to server	
+        sendstat();										// Show the status message and send to server
+		
+		// If the 1ch gateway is a sensor itself, send the sensor values
+		// could be battery but also other status info or sensor info
+#if GATEWAYNODE==1
+		yield();
+		if ((buff_index = sensorPacket(buff_up)) >= 0) {
+			yield();
+			sendUdp(buff_up, buff_index);
+		}
+#endif
 		stattime = nowseconds;
     }
 	
