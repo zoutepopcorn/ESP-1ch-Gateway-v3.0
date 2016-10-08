@@ -1,7 +1,7 @@
 //
 // Copyright (c) 2016 Maarten Westenberg version for ESP8266
-// Verison 3.1.0
-// Date: 2016-10-10
+// Verison 3.2.0
+// Date: 2016-10-08
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -12,8 +12,6 @@
 // https://opensource.org/licenses/mit-license.php
 //
 // Author: Maarten Westenberg
-// Version: 3.1.0
-// Date: 2016-10-07
 //
 // This file contains a number of compile-time settings that can be set on (=1) or off (=0)
 // The disadvantage of compile time is minor compared to the memory gain of not having
@@ -30,14 +28,14 @@
 
 // Single channel gateways if they behave strict should only use one frequency channel and
 // one spreading factor. However, the TTN backend replies on RX2 timeslot for spreading factors
-// SF9-SF12. Also, the server will respond with SF12 in the RX2 timeslot.
+// SF9-SF12 and frequency 869.525 MHz. 
 // If the 1ch gateway is working for nodes that ONLY transmit and receive on the set
 // and agreed frequency and spreading factor. make sure to set STRICT to 1.
 // In this case, the frequency and spreading factor for downlink messages is adapted by this
 // gateway
 // NOTE: If your node has only one frequency enabled and one SF, you must set this to 1
 //		in order to receive downlink messages
-#define _STRICT_1CH	1							// 1 is strict, 0 is as sent by backend
+#define _STRICT_1CH	0							// 1 is strict, 0 is as sent by backend
 
 // Gather statistics on sensor and Wifi status
 #define STATISTICS 1

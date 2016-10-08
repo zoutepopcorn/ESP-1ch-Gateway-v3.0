@@ -1,7 +1,7 @@
 //
 // Copyright (c) 2016 Maarten Westenberg version for ESP8266
-// Verison 3.1.0
-// Date: 2016-10-07
+// Verison 3.2.0
+// Date: 2016-10-08
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -12,8 +12,6 @@
 // https://opensource.org/licenses/mit-license.php
 //
 // Author: Maarten Westenberg
-// Version: 3.1.0
-// Date: 2016-10-07
 //
 // This file contains the webserver code for the ESP Single Channel Gateway.
 
@@ -208,7 +206,7 @@ String WifiServer(char *cmd, char *arg) {
 	response +="</table>";
 
 	
-	response +="Click <a href=\"/RESET\">here</a> to reset statistics<br>";
+	response +="Click <a href=\"/RESET\">here</a> to reset statistics<br><br>";
 	
 	response +="Click <a href=\"/NEWSSID\">here</a> to reset accesspoint<br>";
 

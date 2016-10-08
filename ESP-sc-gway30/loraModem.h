@@ -1,7 +1,7 @@
 //
 // Copyright (c) 2016 Maarten Westenberg version for ESP8266
-// Verison 3.1.0
-// Date: 2016-10-07
+// Verison 3.2.0
+// Date: 2016-10-08
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many other contributors.
@@ -12,8 +12,6 @@
 // https://opensource.org/licenses/mit-license.php
 //
 // Author: Maarten Westenberg
-// Version: 3.1.0
-// Date: 2016-10-07
 //
 // This file contains a number of compile-time settings that can be set on (=1) or off (=0)
 // The disadvantage of compile time is minor compared to the memory gain of not having
@@ -30,8 +28,8 @@ long txDelay= 0000;								// extra delay time on top of server TMST
 // Each "real" gateway should support the first 3 frequencies according to LoRa spec.
 uint32_t  freq = 868100000; 					// Channel 0, 868.1 MHz
 //uint32_t  freq = 868300000; 					// Channel 1, 868.3 MHz
-//uint32_t  freq = 868500000; 					// in Mhz! (868.5)
-//uint32_t  freq = 867100000; 					// in Mhz! (867.1)
+//uint32_t  freq = 868500000; 					// Channel 1, 868.5 MHz
+//uint32_t  freq = 867100000; 					// Channel 2, 867.1 MHz
 //uint32_t  freq = 867300000; 					// in Mhz! (867.3)
 //uint32_t  freq = 867500000; 					// in Mhz! (867.5)
 //uint32_t  freq = 867700000; 					// in Mhz! (867.7)

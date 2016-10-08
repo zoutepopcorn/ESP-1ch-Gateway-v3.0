@@ -1,7 +1,7 @@
 //
 // Copyright (c) 2016 Maarten Westenberg version for ESP8266
-// Verison 3.1.0
-// Date: 2016-10-07
+// Verison 3.2.0
+// Date: 2016-10-08
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -12,8 +12,6 @@
 // https://opensource.org/licenses/mit-license.php
 //
 // Author: Maarten Westenberg
-// Version: 3.1.0
-// Date: 2016-10-07
 //
 // This file contains the LoRa modem specific code enabling to receive
 // and transmit packages/messages.
@@ -297,10 +295,11 @@ void loraWait(uint32_t tmst) {
 	uint32_t waitTime = tmst - micros();
 		
 	while (waitTime > 16000) {
-		delay(16);										// use regular delay() including yield
+		delay(15);										// ms delay() including yield, slightly shorter
 		waitTime= tmst - micros();
 	}
 	if (waitTime>0) delayMicroseconds(waitTime);
+	else if ((waitTime+20) < 0) Serial.println(F("loraWait TOO LATE"));
 	
 	//yield();
 	if (debug >=1) { 
@@ -342,7 +341,7 @@ void loraWait(uint32_t tmst) {
 // 15. opmode TX
 // ----------------------------------------------------------------------------
 
-static void txLoraModem(uint8_t *payLoad, uint8_t payLength, uint32_t tmst,
+static void txLoraModem(uint8_t *payLoad, uint8_t payLength, uint32_t tmst, uint8_t sfTx,
 						uint8_t powe, uint32_t freq, uint8_t crc, uint8_t iiq)
 {
 	if (debug>=1) {
@@ -366,23 +365,18 @@ static void txLoraModem(uint8_t *payLoad, uint8_t payLength, uint32_t tmst,
 	opmode(OPMODE_STANDBY);										// set 0x01 to 0x01
 	
 	// 3. Init spreading factor and other Modem setting
-    sf_t sf = _SPREADING;
-	setRate(sf, crc);
+	setRate(sfTx, crc);
 	
 	//writeRegister(REG_HOP_PERIOD, 0x00);						// set 0x24 to 0x00 only for receivers
 	
 	// 4. Init Frequency, config channel
 	setFreq(freq);
 
-
-	
 	// 6. Set power level, REG_PAC
 	setPow(powe);
 	
 	// 7. prevent node to node communication
 	writeRegister(REG_INVERTIQ,iiq);							// 0x33, (0x27 or 0x40)
-
-
 	
 	// 8. set the IRQ mapping DIO0=TxDone DIO1=NOP DIO2=NOP (or lesss for 1ch gateway)
     //writeRegister(REG_DIO_MAPPING_1, MAP_DIO0_LORA_TXDONE|MAP_DIO1_LORA_NOP|MAP_DIO2_LORA_NOP);
@@ -573,22 +567,22 @@ int sendPacket(uint8_t *buff_down, uint8_t length) {
 	// {"txpk":{"codr":"4/5","data":"YCkEAgIABQABGmIwYX/kSn4Y","freq":868.1,"ipol":true,"modu":"LORA","powe":14,"rfch":0,"size":18,"tmst":1890991792,"datr":"SF7BW125"}}
 
 	// Used in the protocol:
-	const char * data = root["txpk"]["data"];
-	uint8_t psize = root["txpk"]["size"];
-	bool ipol = root["txpk"]["ipol"];
-	uint8_t powe = root["txpk"]["powe"];
-	uint32_t tmst = (uint32_t) root["txpk"]["tmst"].as<unsigned long>();
+	const char * data	= root["txpk"]["data"];
+	uint8_t psize		= root["txpk"]["size"];
+	bool ipol			= root["txpk"]["ipol"];
+	uint8_t powe		= root["txpk"]["powe"];
+	uint32_t tmst		= (uint32_t) root["txpk"]["tmst"].as<unsigned long>();
 
 	// Not used in the protocol:
-	const char * datr = root["txpk"]["datr"];
-	const float ff= root["txpk"]["freq"];
-	const char * modu = root["txpk"]["modu"];
-	const char * codr = root["txpk"]["codr"];
+	const char * datr	= root["txpk"]["datr"];			// eg "SF7BW125"
+	const float ff		= root["txpk"]["freq"];			// eg 869.525
+	const char * modu	= root["txpk"]["modu"];			// =="LORA"
+	const char * codr	= root["txpk"]["codr"];
 	//if (root["txpk"].containsKey("imme") ) {
 	//	const bool imme = root["txpk"]["imme"];			// Immediate Transmit (tmst don't care)
 	//}
 
-	const uint32_t fff = (uint32_t) ((uint32_t)((ff+0.000035)*1000)) * 1000;
+
 	
 	if (data != NULL) {
 		if (debug>=2) { Serial.print(F("data: ")); Serial.println((char *) data); }
@@ -604,27 +598,41 @@ int sendPacket(uint8_t *buff_down, uint8_t length) {
 	uint8_t payLoad[payLength];							// Declare buffer
 	base64_decode((char *) payLoad, (char *) data, strlen(data));
 
+	// Compute wait time in microseconds
 	uint32_t w = (uint32_t) (tmst - micros());
+	
 #if _STRICT_1CH == 1
-	// DO not use RX2 or JOIN2 as they contain other frequencies
+	// Use RX1 timeslot as this is our frequency.
+	// Do not use RX2 or JOIN2 as they contain other frequencies
 	if ((w>1000000) && (w<3000000)) { tmst-=1000000; }
 	else if ((w>6000000) && (w<7000000)) { tmst-=1000000; }
-	txLoraModem(payLoad, payLength, tmst, powe, freq, crc, iiq);
+	
+	const uint8_t sfTx = sf;
+	const uint32_t fff = freq;
+	
+	txLoraModem(payLoad, payLength, tmst, sfTx,  powe, fff, crc, iiq);
 #else
-	txLoraModem(payLoad, payLength, tmst, powe, fff, crc, iiq);
+	const uint8_t sfTx = atoi(datr+2);					// Convert "SF9BW125" to 9
+	// convert double frequency (MHz) into uint32_t frequency in Hz.
+	const uint32_t fff = (uint32_t) ((uint32_t)((ff+0.000035)*1000)) * 1000;
+	
+	txLoraModem(payLoad, payLength, tmst, sfTx, powe, fff, crc, iiq);
 #endif
 
 	if (debug>=1) {
 		Serial.print(F("Request:: "));
-		Serial.print(F(" datr=")); Serial.print(datr);
-		Serial.print(F(" freq=")); Serial.print(fff);
+		Serial.print(F(" tmst=")); Serial.print(tmst); Serial.print(F(" wait=")); Serial.println(w);
+		
+		Serial.print(F(" strict=")); Serial.print(_STRICT_1CH);
+		Serial.print(F(" datr=")); Serial.println(datr);
+		Serial.print(F(" freq=")); Serial.print(freq); Serial.print(F(" ->")); Serial.println(fff);
+		Serial.print(F(" sf  =")); Serial.print(sf); Serial.print(F(" ->")); Serial.print(sfTx);
+		
 		Serial.print(F(" modu=")); Serial.print(modu);
 		Serial.print(F(" powe=")); Serial.print(powe);
-		Serial.print(F(" codr=")); Serial.print(codr);
-		Serial.print(F(" tmst=")); Serial.print(tmst);
-		Serial.print(F(" wait=")); Serial.print(w);
-		Serial.print(F(" ipol=")); Serial.print(ipol);
-		Serial.println();
+		Serial.print(F(" codr=")); Serial.println(codr);
+
+		Serial.print(F(" ipol=")); Serial.println(ipol);
 		Serial.println();								// empty line between messages
 	}
 	

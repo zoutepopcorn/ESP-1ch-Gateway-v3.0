@@ -1,9 +1,9 @@
 //
 // Copyright (c) 2016 Maarten Westenberg version for ESP8266
-// Verison 3.1.0
-// Date: 2016-10-07
+// Verison 3.2.0
+// Date: 2016-10-08
 //
-// 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
+// 	based on work done by Thomas Telkamp for Raspberry PI 1-ch gateway
 //	and many others.
 //
 // All rights reserved. This program and the accompanying materials
@@ -12,8 +12,6 @@
 // https://opensource.org/licenses/mit-license.php
 //
 // Author: Maarten Westenberg
-// Version: 3.1.0
-// Date: 2016-10-07
 //
 // The protocols used in this 1ch gateway: 
 // 1. LoRA Specification version V1.0 and V1.1 for Gateway-Node communication
@@ -100,7 +98,7 @@ char MAC_char[19];
 int ssPin = 16;									// GPIO16, D0
 int dio0  = 15;									// GPIO15, D8
 int dio1  = 4;									// GPIO4,  D2
-int dio2  = 3;									// GPIO3, !! NOT CONNECTED IN THIS VERSION
+int dio2  = 0;									// GPIO3, !! NOT CONNECTED IN THIS VERSION
 int RST   = 0;									// 0, not connected
 
 // Set spreading factor (SF7 - SF12)

@@ -1,7 +1,7 @@
 //
 // Copyright (c) 2016 Maarten Westenberg version for ESP8266
-// Verison 3.1.0
-// Date: 2016-10-07
+// Verison 3.2.0
+// Date: 2016-10-08
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -12,8 +12,6 @@
 // https://opensource.org/licenses/mit-license.php
 //
 // Author: Maarten Westenberg
-// Version: 3.1.0
-// Date: 2016-10-07
 //
 // This file contains the code for using the single channel gateway also as a sensor
 // node. 
@@ -24,8 +22,8 @@
 		
 #if GATEWAYNODE==1
 
-unsigned char DevAddr[4]  = { 0x00, 0x00, 0x00, 0x20 };	// Note: bytes swapping done later
-unsigned char AppSKey[16] = { 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+unsigned char DevAddr[4]  = { 0x02, 0x02, 0x04, 0x20 };	// Note: bytes swapping done later
+unsigned char AppSKey[16] = { 0x02, 0x02, 0x04, 0x20, 0x00, 0x00, 0x00, 0x00, 0x54, 0x68, 0x69, 0x6E, 0x67, 0x73, 0x34, 0x55 };
 
 // ----------------------------------------------------------------------------
 // XXX Experimental Read Internal Sensors
