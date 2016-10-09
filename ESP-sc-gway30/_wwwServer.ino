@@ -167,13 +167,16 @@ String WifiServer(char *cmd, char *arg) {
 	response +="<tr><td style=\"border: 1px solid black;\">Frequency</td><td style=\"border: 1px solid black;\">"; response+=freq; response+="</tr>";
 	response +="<tr><td style=\"border: 1px solid black;\">Spreading Factor</td><td style=\"border: 1px solid black;\">"; response+=sf; response+="</tr>";
 	response +="<tr><td style=\"border: 1px solid black;\">Gateway ID</td><td style=\"border: 1px solid black;\">";	
-	response +=String(MAC_array[0],HEX);									// The MAC array is always returned in lowercase
-	response +=String(MAC_array[1],HEX); 
-	response +=String(MAC_array[2],HEX); 
-	response +="ffff"; 
-	response +=String(MAC_array[3],HEX); 
-	response +=String(MAC_array[4],HEX); 
-	response +=String(MAC_array[5],HEX);
+        // The MAC array is always returned in lowercase
+	for(int i = 0; i< 6; i++) {
+	    if(i == 3) {
+		response += "ffff"; 
+	    }
+	    if(MAC_array[i] <= 0x0F) {
+		response += "0";         // ADD A ZERO BEFORE THE HEX
+	    }
+	    response += String(MAC_array[i],HEX);  
+	}
 	response+="</tr>";
 	response +="</table>";
 		
