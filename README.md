@@ -14,7 +14,7 @@ This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
 
-# How it works
+# How it works with the websockets
 - The gateway will 'tweet' a message to dweet.io with the local ip adress. 
 
 - Then the webpage will connect to the gateway with a websocket
