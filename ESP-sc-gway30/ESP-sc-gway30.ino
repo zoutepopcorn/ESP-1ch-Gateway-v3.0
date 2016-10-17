@@ -35,6 +35,7 @@
 #include "FS.h"
 #endif
 
+#include <Arduino.h>
 #include <Esp.h>
 #include <string.h>
 #include <stdio.h>
@@ -47,10 +48,13 @@
 #include <SPI.h>
 #include <TimeLib.h>							// http://playground.arduino.cc/code/time
 #include <ESP8266WiFi.h>
+#include <WiFiClient.h>
 #include <DNSServer.h> 							// Local DNSserver
-#include <ESP8266WebServer.h>
 #include <WiFiManager.h>						// Library for ESP WiFi config through an AP
 #include <WiFiUdp.h>
+#include <WebSocketsServer.h>
+#include <ESP8266HTTPClient.h>
+#include <Hash.h>
 
 #if GATEWAYNODE==1
 #include "AES-128_V10.h"
@@ -65,7 +69,6 @@ extern "C" {
 #include <ArduinoJson.h>
 #include <SimpleTimer.h>
 #include <gBase64.h>							// https://github.com/adamvr/arduino-base64 (I changed the name)
-
 #include "loraModem.h"
 
 int debug=1;									// Debug level! 0 is no msgs, 1 normal, 2 is extensive
@@ -88,21 +91,15 @@ enum sf_t { SF7=7, SF8, SF9, SF10, SF11, SF12 };
 uint8_t MAC_array[6];
 char MAC_char[19];
 
-/*******************************************************************************
- *
- * Configure these values only if necessary!
- *
- *******************************************************************************/
-
 // SX1276 - ESP8266 connections
-int ssPin = 16;									// GPIO16, D0
-int dio0  = 15;									// GPIO15, D8
-int dio1  = 4;									// GPIO4,  D2
-int dio2  = 0;									// GPIO3, !! NOT CONNECTED IN THIS VERSION
-int RST   = 0;									// 0, not connected
+int ssPin = 15;                 // GPIO15, D8
+int dio0  = 5;                  // GPIO5,  D1
+int dio1  = 4;                  // GPIO4,  D2
+int dio2  = 3;                  // GPIO3, !! NOT CONNECTED IN THIS VERSION
+int RST   = 0;                  // GPIO16, D0, not connected
 
 // Set spreading factor (SF7 - SF12)
-sf_t sf 			= _SPREADING ;
+sf_t sf 			= _SPREADING;
 
 // Set location, description and other configuration parameters
 // Defined in ESP-sc_gway.h
@@ -128,11 +125,11 @@ uint32_t lastTmst = 0;
 SimpleTimer timer; 								// Timer is needed for delayed sending
 
 // You can switch webserver off if not necessary but probably better to leave it in.
-#if A_SERVER==1
-#include <Streaming.h>          				// http://arduiniana.org/libraries/streaming/
-  String webPage;
-  ESP8266WebServer server(SERVERPORT);
-#endif
+//#if A_SERVER==1
+//#include <Streaming.h>          				// http://arduiniana.org/libraries/streaming/
+//  String webPage;
+//  ESP8266WebServer server(SERVERPORT);
+//#endif
 
 #define TX_BUFF_SIZE  2048						// Upstream buffer to send to MQTT
 #define RX_BUFF_SIZE  1024						// Downstream received from MQTT
@@ -153,7 +150,7 @@ uint16_t frameCount=0;							// We REALLY should write this to SPIFF file
 // ----------------------------------------------------------------------------
 void die(const char *s)
 {
-    Serial.println(s);
+  Serial.println(s);
 	delay(50);
 	// system_restart();						// SDK function
 	// ESP.reset();				
@@ -174,8 +171,7 @@ void gway_failed(const char *file, uint16_t line) {
 // Print leading '0' digits for hours(0) and second(0) when
 // printing values less than 10
 // ----------------------------------------------------------------------------
-void printDigits(int digits)
-{
+void printDigits(int digits) {
     // utility function for digital clock display: prints preceding colon and leading 0
     if(digits < 10)
         Serial.print(F("0"));
@@ -197,7 +193,6 @@ void printTime() {
 	printDigits(second());
 	return;
 }
-
 
 // ----------------------------------------------------------------------------
 // Convert a float to string for printing
@@ -265,8 +260,7 @@ void sendNTPpacket(IPAddress& timeServerIP) {
 // Note: As this function is called from SyncINterval in the background
 //	make sure we have no blocking calls in this function
 // ----------------------------------------------------------------------------
-time_t getNtpTime()
-{
+time_t getNtpTime(){
   WiFi.hostByName(NTP_TIMESERVER, ntpServer);
   for (int i = 0 ; i < 4 ; i++) { 				// 5 retries.
     sendNTPpacket(ntpServer);
@@ -297,8 +291,6 @@ void setupTime() {
   setSyncInterval(_NTP_INTERVAL);
 }
 
-
-
 // ============================================================================
 // UDP AND WLAN FUNCTIONS
 
@@ -316,7 +308,6 @@ IPAddress getDnsIP() {
 // Each line contains an SSID and a Password for an access point
 // ----------------------------------------------------------------------------
 int WlanReadWpa( int maxwpa ) {
-
 	const char wpafile[] = "/config.txt";
 	if (!SPIFFS.exists(wpafile)) {
 		Serial.println("ERROR:: WlanReadWpa, file does not exist");
@@ -330,7 +321,6 @@ int WlanReadWpa( int maxwpa ) {
 #if WIFIMANAGER > 0
 	String ssid=f.readStringUntil(',');
 	String pass=f.readStringUntil('\n');
-
 	char ssidBuf[ssid.length()+1];
 	ssid.toCharArray(ssidBuf,ssid.length()+1);
 	char passBuf[pass.length()+1];
@@ -371,7 +361,6 @@ int WlanWriteWpa( char* ssid, char *pass) {
 //	the reconnect is done first thing.
 // ----------------------------------------------------------------------------
 int WlanConnect() {
-
   // We start by connecting to a WiFi network
   wifi_station_set_hostname( "espgway" );
   WiFiManager wifiManager;
@@ -418,7 +407,7 @@ int WlanConnect() {
 	Serial.print(AP_NAME);
 	Serial.print(F(" and connect to IP: 192.168.4.1"));
 	Serial.println();
-  	wifiManager.autoConnect(AP_NAME, AP_PASSWD );
+  wifiManager.autoConnect(AP_NAME, AP_PASSWD );
 	//wifiManager.startConfigPortal(AP_NAME, AP_PASSWD );
 	// At this point, there IS a Wifi Access POint found and connected
 	// We must connect to the local SPIFFS storage to store the access point
@@ -438,6 +427,7 @@ int WlanConnect() {
 
   Serial.print(F("WiFi connected. local IP address: ")); 
   Serial.println(WiFi.localIP());
+  getPage("1C1C1C1C1C1C1C1C", WiFi.localIP());
   yield();
   return(0);
 }
@@ -485,6 +475,7 @@ int readUdp(int packetSize, uint8_t * buff_down)
 				Serial.print(':');
 			}
 			Serial.println();
+      sendWs("PKT_PUSH_DATA ");
 		}
 	break;
 	case PKT_PUSH_ACK:	// 0x01 DOWN
@@ -495,6 +486,7 @@ int readUdp(int packetSize, uint8_t * buff_down)
 			Serial.print(F(", token: "));
 			Serial.println(token, HEX);
 			Serial.println();
+      sendWs("PKT_PUSH_ACK ");
 		}
 	break;
 	case PKT_PULL_DATA:	// 0x02 UP
@@ -676,14 +668,14 @@ void pullData() {
     pullDataReq[3]  = PKT_PULL_DATA;						// 0x02
 	
 	// READ MAC ADDRESS OF ESP8266
-    pullDataReq[4]  = MAC_array[0];
-    pullDataReq[5]  = MAC_array[1];
-    pullDataReq[6]  = MAC_array[2];
-    pullDataReq[7]  = 0xFF;
-    pullDataReq[8]  = 0xFF;
-    pullDataReq[9]  = MAC_array[3];
-    pullDataReq[10] = MAC_array[4];
-    pullDataReq[11] = MAC_array[5];
+    pullDataReq[4]  = 0x1C;
+    pullDataReq[5]  = 0x1C;
+    pullDataReq[6]  = 0x1C;
+    pullDataReq[7]  = 0x1C;
+    pullDataReq[8]  = 0x1C;
+    pullDataReq[9]  = 0x1C;
+    pullDataReq[10] = 0x1C;
+    pullDataReq[11] = 0x1C;
 
     pullIndex = 12;											// 12-byte header
 	
@@ -724,14 +716,14 @@ void sendstat() {
     status_report[3]  = PKT_PUSH_DATA;						// 0x00
 	
 	// READ MAC ADDRESS OF ESP8266
-    status_report[4]  = MAC_array[0];
-    status_report[5]  = MAC_array[1];
-    status_report[6]  = MAC_array[2];
-    status_report[7]  = 0xFF;
-    status_report[8]  = 0xFF;
-    status_report[9]  = MAC_array[3];
-    status_report[10] = MAC_array[4];
-    status_report[11] = MAC_array[5];
+    status_report[4]  = 0x1C;
+    status_report[5]  = 0x1C;
+    status_report[6]  = 0x1C;
+    status_report[7]  = 0x1C;
+    status_report[8]  = 0x1C;
+    status_report[9]  = 0x1C;
+    status_report[10] = 0x1C;
+    status_report[11] = 0x1C;
 
     uint8_t token_h   = (uint8_t)rand(); 					// random token
     uint8_t token_l   = (uint8_t)rand();					// random token
@@ -782,7 +774,6 @@ void sendstat() {
 // Setup code (one time)
 // ----------------------------------------------------------------------------
 void setup () {
-
 	Serial.begin(_BAUDRATE);						// As fast as possible for bus
 	Serial.flush();
 	delay(1000);
@@ -816,7 +807,6 @@ void setup () {
 	}
 	
 	WlanReadWpa(WPASIZE);								// Read the last Wifi settings from SPIFFS into memory
-	
 	// Setup WiFi UDP connection. Give it some time ..
 	while (WlanConnect() < 0) {
 		Serial.print(F("Error Wifi network connect "));
@@ -834,7 +824,7 @@ void setup () {
 		Serial.println(F("Error UDPconnect"));
 	}
 	delay(500);
-
+  
 	 
 	WiFi.macAddress(MAC_array);
     for (int i = 0; i < sizeof(MAC_array); ++i){
@@ -842,6 +832,7 @@ void setup () {
     }
 	Serial.print("MAC: ");
     Serial.println(MAC_char);
+    
 	
     pinMode(ssPin, OUTPUT);
     pinMode(dio0, INPUT);
@@ -852,9 +843,9 @@ void setup () {
     initLoraModem();
 	delay(1000);
 	
-	// We choose the Gateway ID to be the Ethernet Address of our Gateway card
+	  // We choose the Gateway ID to be the Ethernet Address of our Gateway card
     // display results of getting hardware address
-	// 
+	
     Serial.print("Gateway ID: ");
     Serial.print(MAC_array[0],HEX);
     Serial.print(MAC_array[1],HEX);
@@ -863,8 +854,7 @@ void setup () {
 	Serial.print(0xFF, HEX);
     Serial.print(MAC_array[3],HEX);
     Serial.print(MAC_array[4],HEX);
-    Serial.print(MAC_array[5],HEX);
-
+    Serial.print(MAC_array[5],HEX); 
     Serial.print(", Listening at SF");
 	Serial.print(sf);
 	Serial.print(" on ");
@@ -887,49 +877,7 @@ void setup () {
 	}
 	Serial.print("Time: "); printTime();
 	Serial.println();
-
-#if A_SERVER==1	
-	server.on("/", []() {
-		webPage = WifiServer("","");
-		server.send(200, "text/html", webPage);
-	});
-	server.on("/HELP", []() {
-		webPage = WifiServer("HELP","");
-		server.send(200, "text/html", webPage);
-	});
-	server.on("/RESET", []() {
-		webPage = WifiServer("RESET","");
-		server.send(200, "text/html", webPage);
-	});
-	server.on("/NEWSSID", []() {
-		webPage = WifiServer("NEWSSID","");
-		server.send(200, "text/html", webPage);
-	});
-	server.on("/DEBUG=0", []() {
-		webPage = WifiServer("DEBUG","0");
-		server.send(200, "text/html", webPage);
-	});
-	server.on("/DEBUG=1", []() {
-		webPage = WifiServer("DEBUG","1");
-		server.send(200, "text/html", webPage);
-	});
-	server.on("/DEBUG=2", []() {
-		webPage = WifiServer("DEBUG","2");
-		server.send(200, "text/html", webPage);
-	});
-	server.on("/DELAY=1", []() {
-		webPage = WifiServer("DELAY","1");
-		server.send(200, "text/html", webPage);
-	});
-	server.on("/DELAY=-1", []() {
-		webPage = WifiServer("DELAY","-1");
-		server.send(200, "text/html", webPage);
-	});
-	server.begin();											// Start the webserver
-	Serial.print(F("Admin Server started on port "));
-	Serial.println(SERVERPORT);
-#endif	
-
+  runWs();
 	Serial.println(F("--------------------------------------"));
 	delay(100);											// Wait after setup
 }
@@ -1011,10 +959,7 @@ void loop ()
 		pulltime = nowseconds;
     }
 
-	// Handle the WiFi server part of this sketch. Mainly used for administration of the node
-#if A_SERVER==1
-	server.handleClient();
-#endif	
-	
 	yield();
+  loopWs();
+  yield();
 }
