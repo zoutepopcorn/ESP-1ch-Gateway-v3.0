@@ -89,7 +89,7 @@ uint32_t cp_up_pkt_fwd;
 enum sf_t { SF7=7, SF8, SF9, SF10, SF11, SF12 };
 
 uint8_t MAC_array[6];
-char MAC_char[19];
+char    MAC_char[19];
 
 // SX1276 - ESP8266 connections
 int ssPin = 15;                 // GPIO15, D8
@@ -148,8 +148,7 @@ uint16_t frameCount=0;							// We REALLY should write this to SPIFF file
 // somewhere.
 // There are at least 3 other ways to restart the ESP. Pick one if you want.
 // ----------------------------------------------------------------------------
-void die(const char *s)
-{
+void die(const char *s) {
   Serial.println(s);
 	delay(50);
 	// system_restart();						// SDK function
@@ -426,8 +425,7 @@ int WlanConnect() {
   }
 
   Serial.print(F("WiFi connected. local IP address: ")); 
-  Serial.println(WiFi.localIP());
-  getPage("1C1C1C1C1C1C1C1C", WiFi.localIP());
+  Serial.println(WiFi.localIP());  
   yield();
   return(0);
 }
@@ -668,14 +666,14 @@ void pullData() {
     pullDataReq[3]  = PKT_PULL_DATA;						// 0x02
 	
 	// READ MAC ADDRESS OF ESP8266
-    pullDataReq[4]  = 0x1C;
-    pullDataReq[5]  = 0x1C;
-    pullDataReq[6]  = 0x1C;
-    pullDataReq[7]  = 0x1C;
-    pullDataReq[8]  = 0x1C;
-    pullDataReq[9]  = 0x1C;
-    pullDataReq[10] = 0x1C;
-    pullDataReq[11] = 0x1C;
+    pullDataReq[4]  = MAC_array[0];
+    pullDataReq[5]  = MAC_array[1];
+    pullDataReq[6]  = MAC_array[2];
+    pullDataReq[7]  = 0xFF;
+    pullDataReq[8]  = 0xFF;
+    pullDataReq[9]  = MAC_array[3];
+    pullDataReq[10] = MAC_array[4];
+    pullDataReq[11] = MAC_array[5];
 
     pullIndex = 12;											// 12-byte header
 	
@@ -715,15 +713,15 @@ void sendstat() {
     status_report[0]  = PROTOCOL_VERSION;					// 0x01
     status_report[3]  = PKT_PUSH_DATA;						// 0x00
 	
-	// READ MAC ADDRESS OF ESP8266
-    status_report[4]  = 0x1C;
-    status_report[5]  = 0x1C;
-    status_report[6]  = 0x1C;
-    status_report[7]  = 0x1C;
-    status_report[8]  = 0x1C;
-    status_report[9]  = 0x1C;
-    status_report[10] = 0x1C;
-    status_report[11] = 0x1C;
+  // READ MAC ADDRESS OF ESP8266
+    status_report[4]  = MAC_array[0];
+    status_report[5]  = MAC_array[1];
+    status_report[6]  = MAC_array[2];
+    status_report[7]  = 0xFF;
+    status_report[8]  = 0xFF;
+    status_report[9]  = MAC_array[3];
+    status_report[10] = MAC_array[4];
+    status_report[11] = MAC_array[5];
 
     uint8_t token_h   = (uint8_t)rand(); 					// random token
     uint8_t token_l   = (uint8_t)rand();					// random token
@@ -828,11 +826,11 @@ void setup () {
 	 
 	WiFi.macAddress(MAC_array);
     for (int i = 0; i < sizeof(MAC_array); ++i){
-      sprintf(MAC_char,"%s%02x:",MAC_char,MAC_array[i]);
+      sprintf(MAC_char,"%s%02x",MAC_char,MAC_array[i]);
     }
 	Serial.print("MAC: ");
-    Serial.println(MAC_char);
-    
+  Serial.println(MAC_char);
+  getPage(MAC_char, WiFi.localIP());
 	
     pinMode(ssPin, OUTPUT);
     pinMode(dio0, INPUT);
@@ -845,17 +843,8 @@ void setup () {
 	
 	  // We choose the Gateway ID to be the Ethernet Address of our Gateway card
     // display results of getting hardware address
-	
-    Serial.print("Gateway ID: ");
-    Serial.print(MAC_array[0],HEX);
-    Serial.print(MAC_array[1],HEX);
-    Serial.print(MAC_array[2],HEX);
-	Serial.print(0xFF, HEX);
-	Serial.print(0xFF, HEX);
-    Serial.print(MAC_array[3],HEX);
-    Serial.print(MAC_array[4],HEX);
-    Serial.print(MAC_array[5],HEX); 
-    Serial.print(", Listening at SF");
+
+  Serial.print(", Listening at SF");
 	Serial.print(sf);
 	Serial.print(" on ");
 	Serial.print((double)freq/1000000);
