@@ -13,6 +13,14 @@
           top: -10px;
           z-index: -20;
         }
+        #pl {
+            position: fixed;
+            max-width: 100%;
+            height: auto;
+            top:  0px;
+            z-index: -19;
+        }
+
         .transparent{
             background-color: rgba(0,0,0,0.15);
         }
@@ -32,7 +40,7 @@
         }
 
         .bl {
-          background-color: rgba(0,0,255,0.4);
+          background-color: rgba(0,0,155,0.4);
           color: #fff;
         }
 
@@ -41,7 +49,7 @@
         }
 
         .wi {
-          background-color: rgba(255,255,255,0.4);
+          background-color: rgba(255,255,255,0.6);
         }
 
         .card-group {
@@ -60,6 +68,10 @@
           color: #ffffff;
           background: #20bc4c;
         }
+        li {
+          color: #000;
+        }
+
 
     </style>
   </head>
@@ -71,17 +83,46 @@
             <h3 class="card-title">
               STATS
             </h3>
-            <span class="tag tag-info">pkt</span><span id="pkt">0</span><br>
-
+          <ul class="list-group">
+            <li class="list-group-item">
+              <span class="tag tag-default tag-success tag-pill pull-xs-right"><span id="pkt">.</span></span>
+              packets rx
+            </li>
+            <li class="list-group-item">
+              <span class="tag tag-default tag-pill pull-xs-right">.</span>
+              packets
+            </li>
+            <li class="list-group-item">
+              <span class="tag tag-default tag-pill pull-xs-right">.</span>
+              packets forwarded
+            </li>
+          </ul>
           </div>
         </div>
+
+
         <div class="card bl">
           <div class="card-block">
             <h3 class="card-title">
               GATEWAY
             </h3>
-            <p id="stats" class="card-text">
+            <ul class="list-group">
+              <li class="list-group-item"><span id="ip"> </span>
+                <span id="sip" class="tag tag-default tag-default tag-pill pull-xs-right">.</span>
+              </li>
+              <li class="list-group-item">
+                <span id="mac"></span>
+                <span id="smac" class="tag tag-default tag-default tag-pill pull-xs-right">.</span>
+              </li>
+              <li class="list-group-item">
+                <span id="swebsocket" class="tag tag-default tag-default tag-pill pull-xs-right">.</span>
+                websocket <p id="websocket"></p>
+              </li>
+            </ul>
 
+
+
+            <p id="stats" class="card-text">
             </p>
           </div>
         </div>
@@ -97,23 +138,45 @@
         </div>
       </div>
     </div>
-    <div class="container-fluid">
-      <div class="card-columns">
-        <div class="card card-inverse card-primary tr">
-          <div class="card-header text-md-center">
-            TRAFFIC
+
+
+
+    <div class="container">
+      <div class="card-group">
+        <div class="card wi">
+          <div class="card-block">
+            <h3 class="card-title">
+              MESSAGES
+            </h3>
+              <p id="traffic">
+              <br>
           </div>
-          <p id="traffic">
-
-          </p>
-
         </div>
-        <div class="card tr">
-              <img class="card-img img-responsive" src="https://cdn.knmi.nl/system/data_center_article_blocks/image1s/000/000/403/large/tb_fiets2voorkant.jpg?1433255264" style="filter: blur(0.5px) sepia(100%) opacity(70%)" width="100%">
+
+        <div class="card wi">
+          <div class="card-block">
+            <h3 class="card-title">
+              INFO
+            </h3>
+            <p id="stats" class="card-text">
+            </p>
+          </div>
+        </div>
+
+        <div class="card wi">
+          <div class="card-block">
+            <h3 class="card-title">
+              RSSI
+            </h3>
+            <p class="card-text">
+              <p id="rssi"></p>
+            </p>
+          </div>
         </div>
       </div>
     </div>
 
+    <img id="pl" class="card-img img-responsive" src="https://cdn.knmi.nl/system/data_center_article_blocks/image1s/000/000/403/large/tb_fiets2voorkant.jpg?1433255264" style="filter: blur(0.5px) sepia(100%) opacity(70%)" width="100%">
     <!-- Set gateway id -->
     <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
       <div class="modal-dialog" role="document">
@@ -159,7 +222,7 @@
 
     function handleMessage(m) {
         if(m == "Connected") {
-          $("#stats").append('<span class="tag tag-success">id</span> ' + gateway +  '<br>');
+          //$("#gateway").append('<span class="tag tag-success">id</span> ' + gateway +  '<br>');
         } else if(m == "PKT_PUSH_ACK") {
           $("#traffic").append('<span class="tag tag-success">pkt</span> push ACK<br>');
         } else if(m.startsWith("{\"rxpk\":")) {
@@ -168,7 +231,8 @@
           rssi = json.rxpk[0].rssi;
           pkts++;
           $("#pkt").html(pkts);
-          $("#traffic").append('<span class="tag tag-success">' +  rssi  + '  </span> ' + data + '<br>');
+          $("#traffic").append('<span class="tag tag-success">' +  rssi  + '  </span>  ' + data + '<br>');
+          $("#rssi").append();
         }
     }
 
@@ -202,11 +266,23 @@
 
     var ws;
     function openWs(ip) {
-         $("#stats").append('<span class="tag tag-info">ip</span> ' + ip +  '<br>');
+         $("#ip").append(ip);
+         $("#mac").append(gateway);
+
+         $("#smac").addClass("tag-success");
+         $("#smac").html("V");
+
+         $("#sip").addClass("tag-success");
+         $("#sip").html("V");
+
+         $("#swebsocket").addClass("tag-success");
+         $("#swebsocket").html("V");
+
          ws = new WebSocket("ws://" + ip + ":81");
          ws.onopen = function() {
             ws.send("my message");
             console.log("Message is sent...");
+            $("#sw").css(".tag-success");
          };
 
          ws.onmessage = function (evt) {
