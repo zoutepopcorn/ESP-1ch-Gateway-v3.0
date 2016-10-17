@@ -1,6 +1,8 @@
 #Single Channel LoRaWAN Gateway
 
-Version 3.1, October 07, 2016
+Websocket edition by: Johan Hoeksma.
+
+Version 3.2
 Author: M. Westenberg (mw12554@hotmail.com)
 Copyright: M. Westenberg (mw12554@hotmail.com)
 
