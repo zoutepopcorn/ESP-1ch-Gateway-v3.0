@@ -1,4 +1,4 @@
-#Single Channel LoRaWAN Gateway
+#Single Channel LoRaWAN Gateway (websocket)
 
 Websocket edition by: Johan Hoeksma.
 
@@ -13,6 +13,14 @@ https://opensource.org/licenses/mit-license.php
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+
+# How it works
+- The gateway will 'tweet' a message to dweet.io with the local ip adress. 
+
+- Then the webpage will connect to the gateway with a websocket
+
+- on https://zoutepopcorn.github.io/ you can connect. You cant run it from filesystem, only from your localhost.
+
 
 #description
 
