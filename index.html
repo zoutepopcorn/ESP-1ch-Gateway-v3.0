@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Svg</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js" charset="utf-8"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tether/1.3.7/js/tether.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.4/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.4/css/bootstrap.min.css">
+    <style media="screen">
+        #logo {
+          position: fixed;
+          top: -10px;
+          z-index: -20;
+        }
+        .transparent{
+            background-color: rgba(0,0,0,0.15);
+        }
+
+        .panel{
+            background-color: transparent;
+            border: 1px #222;
+        }
+
+        .container {
+          margin-top: 30px;
+          margin-bottom: 30px;
+        }
+
+        .gr {
+          background-color: rgba(0,0,0,0.4);
+        }
+
+        .bl {
+          background-color: rgba(0,0,255,0.4);
+          color: #fff;
+        }
+
+        .tr {
+          background-color: rgba(0,0,0,0);
+        }
+
+        .wi {
+          background-color: rgba(255,255,255,0.4);
+        }
+
+        .card-group {
+          background-color: rgba(0,0,0,0);
+        }
+
+        .card-example {
+          max-width: 350px;
+          margin: 0 auto;
+          margin-top: 15px;
+          margin-bottom: 10px;
+          opacity: 0.5;
+        }
+        .card-example .card-header {
+          font-weight: 900;
+          color: #ffffff;
+          background: #20bc4c;
+        }
+
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="card-group">
+        <div class="card wi">
+          <div class="card-block">
+            <h3 class="card-title">
+              STATS
+            </h3>
+            <span class="tag tag-info">pkt</span><span id="pkt">0</span><br>
+
+          </div>
+        </div>
+        <div class="card bl">
+          <div class="card-block">
+            <h3 class="card-title">
+              GATEWAY
+            </h3>
+            <p id="stats" class="card-text">
+
+            </p>
+          </div>
+        </div>
+        <div class="card wi">
+          <div class="card-block">
+            <h3 class="card-title">
+              OPTIONS
+            </h3>
+            <p class="card-text">
+              <button type="button" class="btn btn-outline-primary" data-toggle="modal" data-target="#myModal">Set gateway ID</button>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="container-fluid">
+      <div class="card-columns">
+        <div class="card card-inverse card-primary tr">
+          <div class="card-header text-md-center">
+            TRAFFIC
+          </div>
+          <p id="traffic">
+
+          </p>
+
+        </div>
+        <div class="card tr">
+              <img class="card-img img-responsive" src="https://cdn.knmi.nl/system/data_center_article_blocks/image1s/000/000/403/large/tb_fiets2voorkant.jpg?1433255264" style="filter: blur(0.5px) sepia(100%) opacity(70%)" width="100%">
+        </div>
+      </div>
+    </div>
+
+    <!-- Set gateway id -->
+    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+            <h4 class="modal-title" id="myModalLabel">Set gateway id</h4>
+          </div>
+          <div class="modal-body">
+              <label for="recipient-name" class="form-control-label">Gateway ID:</label>
+              <input type="text" class="form-control" id="gateway">
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            <button onclick="saveGW()" type="button" class="btn btn-primary" data-dismiss="modal">Sat gateway</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <svg id="logo" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <pattern id="pattern-0" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse" viewBox="0 0 100 100">
+          <path d="M 0 0 L 50 0 L 50 100 L 0 100 Z" style="fill: black;"/>
+        </pattern>
+      </defs>
+      <path id="cloud" d="M 252.323 33.48 C 241.758 34.972 230.736 39.03 221.473 44.771 C 211.56 50.933 202.183 60.425 195.753 70.798 C 193.226 74.893 190.012 81.821 188.518 86.375 C 187.83 88.557 187.179 90.318 187.064 90.318 C 186.949 90.318 186.108 89.17 185.189 87.715 C 182.663 83.849 175.697 77.189 171.41 74.549 C 167.353 72.061 161.458 69.649 157.21 68.693 C 152.77 67.736 144.005 67.506 139.604 68.272 C 129.652 70.032 120.696 74.549 113.424 81.515 C 106.304 88.328 102.439 95.102 99.913 105.206 C 99.606 106.469 99.492 106.546 96.927 107.044 C 86.593 109.11 76.183 114.699 68.604 122.277 C 61.562 129.281 57.007 137.396 55.055 146.352 L 54.404 149.376 L 51.955 149.873 C 38.023 152.744 25.43 162.466 18.771 175.517 C 16.359 180.225 15.134 183.593 13.986 188.722 C 12.8 194.042 12.723 205.027 13.833 210.117 C 16.129 220.758 20.837 229.408 28.301 236.795 C 35.497 243.876 43.113 248.048 53.486 250.574 C 56.241 251.225 64.049 251.262 226.296 251.378 C 350.229 251.454 397.192 251.378 399.795 251.071 C 423.449 248.201 439.984 230.863 441.438 207.4 C 442.127 196.568 438.262 187.114 429.994 179.229 C 426.549 175.977 424.482 174.522 420.732 172.723 C 419.162 171.996 417.861 171.346 417.861 171.269 C 417.861 171.23 418.779 169.815 419.889 168.169 C 422.301 164.533 424.061 160.513 425.21 155.882 C 426.473 150.945 426.434 141.146 425.21 135.52 C 422.76 124.612 418.052 115.885 410.397 108.154 C 401.326 99.006 391.91 93.647 380.658 91.237 C 376.179 90.279 366.42 90.241 361.98 91.198 C 355.549 92.576 349.005 95.332 343.914 98.777 C 342.651 99.656 341.579 100.269 341.502 100.192 C 341.427 100.154 341.12 98.585 340.775 96.748 C 338.479 84.385 332.738 72.099 324.547 61.956 C 321.217 57.823 313.715 50.742 309.505 47.756 C 299.706 40.79 289.908 36.58 277.584 34.016 C 272.494 32.982 258.064 32.676 252.323 33.48 Z" style="stroke: rgb(44, 49, 204); fill: rgb(16, 114, 186);"/>
+      <path id="first" d="M 412.961 46.148 C 410.015 47.603 408.292 50.588 408.292 54.11 C 408.292 56.1 409.899 59.43 411.316 60.425 C 411.89 60.846 414.722 61.956 417.555 62.913 C 443.275 71.372 461.264 92.614 465.168 119.177 C 466.049 125.148 465.742 137.128 464.556 142.563 C 463.484 147.462 463.637 149.873 465.168 152.017 C 467.12 154.811 471.407 156.341 474.813 155.385 C 476.574 154.926 479.215 152.821 480.019 151.213 C 480.325 150.677 480.899 148.304 481.358 146.008 C 484.076 131.923 483.272 117.186 479.062 103.523 C 474.622 89.17 467.35 77.266 456.671 66.97 C 447.179 57.784 436.08 51.086 423.525 46.914 C 417.401 44.885 415.756 44.733 412.961 46.148 Z" style="stroke: rgb(44, 49, 204); fill: rgb(16, 114, 186);"/>
+      <path id="second" d="M 407.297 75.697 C 403.086 77.687 400.981 83.275 402.895 87.485 C 403.929 89.743 405.957 91.237 409.747 92.423 C 424.138 96.978 433.783 108.077 435.888 122.43 C 436.424 126.296 436.194 132.343 435.276 136.438 C 434.51 140.037 434.778 141.682 436.577 144.17 C 438.989 147.5 444.271 148.533 447.868 146.428 C 451.811 144.132 453.226 139.233 453.226 127.827 C 453.226 119.943 452.615 115.962 450.356 109.57 C 444.844 93.992 432.444 81.744 416.828 76.539 C 412.158 75.008 409.364 74.74 407.297 75.697 Z" style="stroke: rgb(44, 49, 204); fill: rgb(16, 114, 186);"/>
+    </svg>
+    <script type="text/javascript">
+    var gateway;
+    var pkts = 0;
+
+    if(localStorage.getItem("gateway") == undefined) {
+      console.log("geen gateway gevonden");
+    } else {
+      gateway = localStorage.getItem("gateway");
+      startGW();
+    }
+
+    function handleMessage(m) {
+        if(m == "Connected") {
+          $("#stats").append('<span class="tag tag-success">id</span> ' + gateway +  '<br>');
+        } else if(m == "PKT_PUSH_ACK") {
+          $("#traffic").append('<span class="tag tag-success">pkt</span> push ACK<br>');
+        } else if(m.startsWith("{\"rxpk\":")) {
+          var json = JSON.parse(m);
+          data = json.rxpk[0].data;
+          rssi = json.rxpk[0].rssi;
+          pkts++;
+          $("#pkt").html(pkts);
+          $("#traffic").append('<span class="tag tag-success">' +  rssi  + '  </span> ' + data + '<br>');
+        }
+    }
+
+    //https://dweet.io/dweet/for/5CCF7FFFFFF7AED?ip=123.123.12.12
+    //https://dweet.io/get/dweets/for/5CCF7FFFFFF7AED
+    function startGW() {
+      var xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function() {
+          if (this.readyState == 4 && this.status == 200) {
+             console.log("klaar");
+             console.log(xhttp.responseText);
+             str = xhttp.responseText;
+             json = JSON.parse(str);
+             console.log(json.with[0].thing);
+             console.log(json.with[0].created);
+             console.log(json.with[0].content.ip);
+             openWs(json.with[0].content.ip);
+          }
+      };
+      xhttp.open("GET", "https://dweet.io/get/dweets/for/" + gateway, true);
+      xhttp.send();
+
+    }
+
+    function saveGW() {
+        var gwid = $("#gateway").val();
+        localStorage.setItem("gateway", gwid);
+        gateway = gwid;
+        startGW();
+    }
+
+    var ws;
+    function openWs(ip) {
+         $("#stats").append('<span class="tag tag-info">ip</span> ' + ip +  '<br>');
+         ws = new WebSocket("ws://" + ip + ":81");
+         ws.onopen = function() {
+            ws.send("my message");
+            console.log("Message is sent...");
+         };
+
+         ws.onmessage = function (evt) {
+            var rcv = evt.data;
+            console.log(rcv);
+            $("#out").prepend(rcv + "<br>");
+            handleMessage(rcv);
+            console.log("Message is received...");
+         };
+
+         ws.onclose = function() {
+            // websocket is closed.
+            console.log("Connection is closed...");
+         };
+    }
+    $("#second").hide();
+    setInterval(function() { $("#first").toggle(); }, 2000);
+    setInterval(function() { $("#second").toggle(); }, 2000);
+    </script>
+  </body>
+</html>
