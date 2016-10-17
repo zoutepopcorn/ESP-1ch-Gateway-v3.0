@@ -19,8 +19,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 - Then the webpage will connect to the gateway with a websocket
 
-- on https://zoutepopcorn.github.io/ you can connect. You cant run it from filesystem, only from localhost or website, it uses xmlhttp.
-
+- Run the index.html file on your own system. (you cant use https, because the websocket can't)
 
 #description
 
