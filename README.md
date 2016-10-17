@@ -21,6 +21,11 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 - Run the index.html file on your own system. (you cant use https, because the websocket can't)
 
+# Add library
+
+For websockets i used:
+https://github.com/Links2004/arduinoWebSockets/tree/master/. Its also in the library folder here..
+
 #description
 
 This repository contains a proof-of-concept implementation of a single
